@@ -11,7 +11,8 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  Keyboard
+  Keyboard,
+  Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -30,6 +31,9 @@ export default function ChatScreen({ navigation, route }) {
   const flatListRef = useRef(null);
   const scrollButtonAnim = useRef(new Animated.Value(0)).current;
   const messageAnimations = useRef({}).current;
+  const typingDot1 = useRef(new Animated.Value(0)).current;
+  const typingDot2 = useRef(new Animated.Value(0)).current;
+  const typingDot3 = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const keyboardWillShow = Keyboard.addListener(
@@ -50,6 +54,45 @@ export default function ChatScreen({ navigation, route }) {
       keyboardWillHide.remove();
     };
   }, []);
+
+  useEffect(() => {
+    if (isLoading) {
+      const animateDot = (dot, delay) => {
+        return Animated.loop(
+          Animated.sequence([
+            Animated.delay(delay),
+            Animated.timing(dot, {
+              toValue: -8,
+              duration: 400,
+              useNativeDriver: true,
+            }),
+            Animated.timing(dot, {
+              toValue: 0,
+              duration: 400,
+              useNativeDriver: true,
+            }),
+          ])
+        );
+      };
+
+      const animation1 = animateDot(typingDot1, 0);
+      const animation2 = animateDot(typingDot2, 150);
+      const animation3 = animateDot(typingDot3, 300);
+
+      animation1.start();
+      animation2.start();
+      animation3.start();
+
+      return () => {
+        animation1.stop();
+        animation2.stop();
+        animation3.stop();
+        typingDot1.setValue(0);
+        typingDot2.setValue(0);
+        typingDot3.setValue(0);
+      };
+    }
+  }, [isLoading]);
 
   useEffect(() => {
     loadChatHistory();
@@ -259,9 +302,10 @@ export default function ChatScreen({ navigation, route }) {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <View style={styles.avatarSmall}>
-          <Text style={styles.avatarSmallText}>I</Text>
-        </View>
+        <Image 
+          source={require('../../assets/ira-dp.avif')}
+          style={styles.avatarImage}
+        />
         <View style={styles.headerInfo}>
           <Text style={styles.headerName}>Ira</Text>
           <View style={styles.onlineContainer}>
@@ -277,34 +321,33 @@ export default function ChatScreen({ navigation, route }) {
         </TouchableOpacity>
         
         {showMenu && (
-          <View style={styles.menuDropdown}>
+          <>
             <TouchableOpacity 
-              style={styles.menuItem}
-              onPress={handleClearChat}
-            >
-              <Ionicons name="trash-outline" size={20} color="#000000" />
-              <Text style={styles.menuItemText}>Clear Chat</Text>
-            </TouchableOpacity>
-            {!isGuest && (
+              style={styles.menuOverlay}
+              activeOpacity={1}
+              onPress={() => setShowMenu(false)}
+            />
+            <View style={styles.menuDropdown}>
               <TouchableOpacity 
                 style={styles.menuItem}
-                onPress={handleLogout}
+                onPress={handleClearChat}
               >
-                <Ionicons name="log-out-outline" size={20} color="#000000" />
-                <Text style={styles.menuItemText}>Logout</Text>
+                <Ionicons name="trash-outline" size={20} color="#000000" />
+                <Text style={styles.menuItemText}>Clear Chat</Text>
               </TouchableOpacity>
-            )}
-          </View>
+              {!isGuest && (
+                <TouchableOpacity 
+                  style={styles.menuItem}
+                  onPress={handleLogout}
+                >
+                  <Ionicons name="log-out-outline" size={20} color="#000000" />
+                  <Text style={styles.menuItemText}>Logout</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </>
         )}
       </View>
-
-      {showMenu && (
-        <TouchableOpacity 
-          style={styles.menuOverlay}
-          activeOpacity={1}
-          onPress={() => setShowMenu(false)}
-        />
-      )}
 
       <View style={styles.chatContainer}>
         <FlatList
@@ -321,7 +364,11 @@ export default function ChatScreen({ navigation, route }) {
 
         {isLoading && (
           <View style={styles.loadingContainer}>
-            <ActivityIndicator size="small" color="#000000" />
+            <View style={styles.typingIndicator}>
+              <Animated.View style={[styles.typingDot, { transform: [{ translateY: typingDot1 }] }]} />
+              <Animated.View style={[styles.typingDot, { transform: [{ translateY: typingDot2 }] }]} />
+              <Animated.View style={[styles.typingDot, { transform: [{ translateY: typingDot3 }] }]} />
+            </View>
             <Text style={styles.loadingText}>Ira is typing...</Text>
           </View>
         )}
@@ -379,13 +426,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E0CD',
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+    zIndex: 100,
+  },
+  avatarImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    borderColor: '#E5E0CD',
   },
   avatarSmall: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#000000',
     justifyContent: 'center',
     alignItems: 'center',
@@ -445,13 +509,23 @@ const styles = StyleSheet.create({
     maxWidth: '80%',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 16,
+    borderRadius: 20,
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
   },
   iraBubble: {
     backgroundColor: '#000000',
+    borderBottomLeftRadius: 4,
   },
   userBubble: {
     backgroundColor: '#f4f0de',
+    borderBottomRightRadius: 4,
   },
   messageText: {
     fontSize: 15,
@@ -470,29 +544,48 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   loadingText: {
-    marginLeft: 8,
+    marginLeft: 12,
     fontSize: 14,
     color: '#666666',
     fontStyle: 'italic',
+  },
+  typingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  typingDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#000000',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: 16,
     paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E5E0CD',
-    backgroundColor: '#FCFAF7',
     position: 'relative',
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: -1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 3,
   },
   input: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
+    backgroundColor: '#F8F8F8',
+    borderWidth: 1,
     borderColor: '#E5E0CD',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
     fontSize: 15,
     color: '#000000',
     maxHeight: 100,
@@ -547,7 +640,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 5,
+    zIndex: 150,
   },
   menuDropdown: {
     position: 'absolute',
@@ -564,8 +657,8 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.15,
     shadowRadius: 4,
-    elevation: 5,
-    zIndex: 10,
+    elevation: 10,
+    zIndex: 200,
     minWidth: 160,
   },
   menuItem: {

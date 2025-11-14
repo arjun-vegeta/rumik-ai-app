@@ -15,38 +15,40 @@ export default function PhoneLoginScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
+      <TouchableOpacity 
+        style={styles.backButton}
+        onPress={() => navigation.goBack()}
+      >
+        <Text style={styles.backButtonText}>← Back</Text>
+      </TouchableOpacity>
+
       <View style={styles.content}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backButtonText}>← Back</Text>
-        </TouchableOpacity>
+        <View style={styles.centerContent}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Enter Phone Number</Text>
+            <Text style={styles.subtitle}>We'll send you a verification code</Text>
+          </View>
 
-        <View style={styles.header}>
-          <Text style={styles.title}>Enter Phone Number</Text>
-          <Text style={styles.subtitle}>We'll send you a verification code</Text>
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="10-digit phone number"
+              placeholderTextColor="#999999"
+              keyboardType="phone-pad"
+              maxLength={10}
+              value={phoneNumber}
+              onChangeText={setPhoneNumber}
+            />
+          </View>
+
+          <TouchableOpacity 
+            style={[styles.continueButton, phoneNumber.length !== 10 && styles.continueButtonDisabled]}
+            onPress={handleContinue}
+            disabled={phoneNumber.length !== 10}
+          >
+            <Text style={styles.continueButtonText}>Continue</Text>
+          </TouchableOpacity>
         </View>
-
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="10-digit phone number"
-            placeholderTextColor="#999999"
-            keyboardType="phone-pad"
-            maxLength={10}
-            value={phoneNumber}
-            onChangeText={setPhoneNumber}
-          />
-        </View>
-
-        <TouchableOpacity 
-          style={[styles.continueButton, phoneNumber.length !== 10 && styles.continueButtonDisabled]}
-          onPress={handleContinue}
-          disabled={phoneNumber.length !== 10}
-        >
-          <Text style={styles.continueButtonText}>Continue</Text>
-        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -60,10 +62,15 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 20,
+    justifyContent: 'center',
+    marginTop: -200,
+  },
+  centerContent: {
+    width: '100%',
   },
   backButton: {
-    marginBottom: 40,
+    paddingHorizontal: 24,
+    paddingTop: 20,
   },
   backButtonText: {
     fontSize: 16,
@@ -72,16 +79,19 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 40,
+    alignItems: 'center',
   },
   title: {
     fontSize: 28,
     fontWeight: '700',
     color: '#000000',
     marginBottom: 8,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
     color: '#666666',
+    textAlign: 'center',
   },
   inputContainer: {
     marginBottom: 24,

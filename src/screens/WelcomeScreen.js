@@ -1,8 +1,40 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, ScrollView, Dimensions, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+const { width } = Dimensions.get('window');
+
+const features = [
+  {
+    title: 'Understands Intent',
+    description: "Ira doesn't just hear words - she understands what you really mean.",
+    conversation: [
+      { sender: 'user', text: "ugh i don't even know what i want rn 😩" },
+      { sender: 'ira', text: "sounds like you're feeling stuck? let's figure it out together 💭" },
+    ],
+  },
+  {
+    title: 'Infers Emotions',
+    description: 'She picks up on how you feel and responds with genuine empathy.',
+    conversation: [
+      { sender: 'user', text: "yeah everything's cool lol" },
+      { sender: 'ira', text: "hmm, that 'lol' tells me otherwise 🤔 what's really going on?" },
+    ],
+  },
+  {
+    title: 'Multilingual',
+    description: 'Converses naturally in Hinglish, Bangla, Marathi, and more.',
+    conversation: [
+      { sender: 'user', text: "yaar aaj toh ekdum tired hu 😴" },
+      { sender: 'ira', text: "arre! take some rest na, you've earned it ✨" },
+    ],
+  },
+];
+
 export default function WelcomeScreen({ navigation }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const scrollViewRef = useRef(null);
+  const scrollX = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
@@ -22,25 +54,178 @@ export default function WelcomeScreen({ navigation }) {
     ]).start();
   }, []);
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const nextIndex = (currentIndex + 1) % features.length;
+      setCurrentIndex(nextIndex);
+      scrollViewRef.current?.scrollTo({
+        x: nextIndex * (width - 8),
+        animated: true,
+      });
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [currentIndex]);
+
+  const handleScroll = Animated.event(
+    [{ nativeEvent: { contentOffset: { x: scrollX } } }],
+    {
+      useNativeDriver: false,
+      listener: (event) => {
+        const scrollPosition = event.nativeEvent.contentOffset.x;
+        const index = Math.round(scrollPosition / (width - 8));
+        if (index !== currentIndex) {
+          setCurrentIndex(index);
+        }
+      },
+    }
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <Animated.View 
           style={[
-            styles.header,
+            styles.headerSection,
             {
               opacity: fadeAnim,
               transform: [{ translateY: slideAnim }],
             }
           ]}
         >
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>I</Text>
-            </View>
+          <Image 
+            source={require('../../assets/meetira.avif')}
+            style={styles.meetIraImage}
+            resizeMode="contain"
+          />
+        </Animated.View>
+
+        <Animated.View 
+          style={[
+            styles.carouselSection,
+            {
+              opacity: fadeAnim,
+            }
+          ]}
+        >
+          <Animated.ScrollView
+            ref={scrollViewRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            style={styles.carousel}
+            snapToInterval={width - 8}
+            decelerationRate="fast"
+            contentContainerStyle={styles.carouselContent}
+          >
+            {features.map((feature, index) => (
+              <Animated.View 
+                key={index} 
+                style={[
+                  styles.featureCard,
+                  {
+                    opacity: scrollX.interpolate({
+                      inputRange: [
+                        (index - 1) * (width - 8),
+                        index * (width - 8),
+                        (index + 1) * (width - 8),
+                      ],
+                      outputRange: [0.3, 1, 0.3],
+                      extrapolate: 'clamp',
+                    }),
+                    transform: [{
+                      scale: scrollX.interpolate({
+                        inputRange: [
+                          (index - 1) * (width - 8),
+                          index * (width - 8),
+                          (index + 1) * (width - 8),
+                        ],
+                        outputRange: [0.9, 1, 0.9],
+                        extrapolate: 'clamp',
+                      }),
+                    }],
+                  }
+                ]}
+              >
+                <View style={styles.conversationPreview}>
+                  {feature.conversation.map((message, msgIndex) => (
+                    <View 
+                      key={msgIndex}
+                      style={[
+                        styles.previewMessageContainer,
+                        message.sender === 'ira' ? styles.previewIraContainer : styles.previewUserContainer
+                      ]}
+                    >
+                      <View style={styles.previewMessageRow}>
+                        {message.sender === 'ira' && (
+                          <Image 
+                            source={require('../../assets/ira-dp.avif')}
+                            style={styles.previewAvatar}
+                          />
+                        )}
+                        <View style={[
+                          styles.previewBubble,
+                          message.sender === 'ira' ? styles.previewIraBubble : styles.previewUserBubble
+                        ]}>
+                          <Text style={[
+                            styles.previewMessageText,
+                            message.sender === 'ira' ? styles.previewIraText : styles.previewUserText
+                          ]}>
+                            {message.text}
+                          </Text>
+                        </View>
+                        {message.sender === 'user' && (
+                          <Image 
+                            source={require('../../assets/user.avif')}
+                            style={styles.previewAvatar}
+                          />
+                        )}
+                      </View>
+                    </View>
+                  ))}
+                </View>
+                <Text style={styles.featureTitle}>{feature.title}</Text>
+                <Text style={styles.featureDescription}>{feature.description}</Text>
+              </Animated.View>
+            ))}
+          </Animated.ScrollView>
+
+          <View style={styles.dotsContainer}>
+            {features.map((_, index) => {
+              const inputRange = [
+                (index - 1) * (width - 8),
+                index * (width - 8),
+                (index + 1) * (width - 8),
+              ];
+
+              const dotWidth = scrollX.interpolate({
+                inputRange,
+                outputRange: [8, 24, 8],
+                extrapolate: 'clamp',
+              });
+
+              const opacity = scrollX.interpolate({
+                inputRange,
+                outputRange: [0.3, 1, 0.3],
+                extrapolate: 'clamp',
+              });
+
+              return (
+                <Animated.View
+                  key={index}
+                  style={[
+                    styles.dot,
+                    {
+                      width: dotWidth,
+                      opacity,
+                    },
+                  ]}
+                />
+              );
+            })}
           </View>
-          <Text style={styles.title}>Talk to Ira</Text>
-          <Text style={styles.subtitle}>Your AI companion for meaningful conversations</Text>
         </Animated.View>
 
         <Animated.View 
@@ -67,6 +252,15 @@ export default function WelcomeScreen({ navigation }) {
           >
             <Text style={styles.secondaryButtonText}>Continue as Guest</Text>
           </TouchableOpacity>
+
+          <View style={styles.poweredByContainer}>
+            <Text style={styles.poweredByText}>powered by:</Text>
+            <Image 
+              source={require('../../assets/logo.avif')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </View>
         </Animated.View>
       </View>
     </SafeAreaView>
@@ -81,44 +275,129 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
     paddingVertical: 40,
   },
-  header: {
+  headerSection: {
+    paddingHorizontal: 4,
+    paddingTop: 20,
+    alignItems: 'center',
+  },
+  meetIraImage: {
+    width: width - 8,
+    height: 80,
+  },
+  mainTitle: {
+    fontSize: 48,
+    fontWeight: '700',
+    color: '#000000',
+    textAlign: 'center',
+  },
+  carouselSection: {
     flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
+    paddingVertical: 40,
   },
-  avatarContainer: {
-    marginBottom: 32,
+  carousel: {
+    flexGrow: 0,
   },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#000000',
+  carouselContent: {
+    paddingHorizontal: 4,
+  },
+  featureCard: {
+    width: width - 8,
+    borderRadius: 24,
+    padding: 16,
+    marginRight: 0,
+    minHeight: 200,
     justifyContent: 'center',
-    alignItems: 'center',
   },
-  avatarText: {
-    fontSize: 48,
-    fontWeight: '600',
+  conversationPreview: {
+    paddingHorizontal: 8,
+    marginBottom: 24,
+  },
+  previewMessageContainer: {
+    marginBottom: 10,
+  },
+  previewIraContainer: {
+    alignItems: 'flex-start',
+  },
+  previewUserContainer: {
+    alignItems: 'flex-end',
+  },
+  previewMessageRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+  },
+  previewAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#E5E0CD',
+  },
+  previewBubble: {
+    maxWidth: '75%',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 18,
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  previewIraBubble: {
+    backgroundColor: '#000000',
+    borderBottomLeftRadius: 4,
+  },
+  previewUserBubble: {
+    backgroundColor: '#f4f0de',
+    borderBottomRightRadius: 4,
+  },
+  previewMessageText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  previewIraText: {
     color: '#E5E0CD',
   },
-  title: {
-    fontSize: 32,
+  previewUserText: {
+    color: '#000000',
+  },
+  featureTitle: {
+    fontSize: 24,
     fontWeight: '700',
     color: '#000000',
     marginBottom: 12,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666666',
     textAlign: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 12,
+  },
+  featureDescription: {
+    fontSize: 15,
+    color: '#666666',
+    lineHeight: 22,
+    textAlign: 'center',
+    paddingHorizontal: 24,
+  },
+  dotsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 8,
+  },
+  dot: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#000000',
   },
   buttonContainer: {
     gap: 16,
+    paddingHorizontal: 24,
   },
   primaryButton: {
     backgroundColor: '#000000',
@@ -143,5 +422,20 @@ const styles = StyleSheet.create({
     color: '#000000',
     fontSize: 16,
     fontWeight: '600',
+  },
+  poweredByContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 16,
+    gap: 0,
+  },
+  poweredByText: {
+    fontSize: 14,
+    color: '#999999',
+  },
+  logo: {
+    height: 24,
+    width: 96,
   },
 });
