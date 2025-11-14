@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ActivityIndicator, View } from 'react-native';
 
+import SplashScreen from './src/screens/SplashScreen';
 import WelcomeScreen from './src/screens/WelcomeScreen';
 import PhoneLoginScreen from './src/screens/PhoneLoginScreen';
 import OTPScreen from './src/screens/OTPScreen';
@@ -13,6 +14,7 @@ import MessageLimitModal from './src/components/MessageLimitModal';
 const Stack = createStackNavigator();
 
 export default function App() {
+  const [showSplash, setShowSplash] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [initialRoute, setInitialRoute] = useState('Welcome');
 
@@ -30,6 +32,10 @@ export default function App() {
       setIsLoading(false);
     }
   };
+
+  if (showSplash) {
+    return <SplashScreen onFinish={() => setShowSplash(false)} />;
+  }
 
   if (isLoading) {
     return (
