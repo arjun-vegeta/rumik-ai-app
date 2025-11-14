@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function MessageLimitModal({ navigation }) {
   const handleLogin = () => {
@@ -11,21 +12,24 @@ export default function MessageLimitModal({ navigation }) {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <Text style={styles.icon}>💬</Text>
+          <View style={styles.iconCircle}>
+            <Ionicons name="chatbubbles" size={48} color="#E5E0CD" />
+          </View>
         </View>
 
         <Text style={styles.title}>Message Limit Reached</Text>
         <Text style={styles.subtitle}>Login to continue chatting with Ira</Text>
 
         <View style={styles.benefitsContainer}>
-          <BenefitItem text="Unlimited messages" />
-          <BenefitItem text="Save chat history" />
-          <BenefitItem text="Personalized responses" />
+          <BenefitItem icon="infinite" text="Unlimited messages" />
+          <BenefitItem icon="bookmark" text="Save chat history" />
+          <BenefitItem icon="sparkles" text="Personalized responses" />
         </View>
 
         <TouchableOpacity 
           style={styles.loginButton}
           onPress={handleLogin}
+          activeOpacity={0.8}
         >
           <Text style={styles.loginButtonText}>Login with Phone</Text>
         </TouchableOpacity>
@@ -33,6 +37,7 @@ export default function MessageLimitModal({ navigation }) {
         <TouchableOpacity 
           style={styles.closeButton}
           onPress={() => navigation.goBack()}
+          activeOpacity={0.8}
         >
           <Text style={styles.closeButtonText}>Maybe Later</Text>
         </TouchableOpacity>
@@ -41,10 +46,12 @@ export default function MessageLimitModal({ navigation }) {
   );
 }
 
-function BenefitItem({ text }) {
+function BenefitItem({ icon, text }) {
   return (
     <View style={styles.benefitItem}>
-      <Text style={styles.benefitBullet}>•</Text>
+      <View style={styles.benefitIconContainer}>
+        <Ionicons name={icon} size={20} color="#000000" />
+      </View>
       <Text style={styles.benefitText}>{text}</Text>
     </View>
   );
@@ -63,10 +70,23 @@ const styles = StyleSheet.create({
   },
   iconContainer: {
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 32,
   },
-  icon: {
-    fontSize: 64,
+  iconCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
   },
   title: {
     fontSize: 28,
@@ -83,36 +103,55 @@ const styles = StyleSheet.create({
   },
   benefitsContainer: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 20,
+    borderRadius: 16,
+    padding: 24,
     marginBottom: 32,
-    borderWidth: 2,
-    borderColor: '#E5E0CD',
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   benefitItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
-  benefitBullet: {
-    fontSize: 20,
-    color: '#000000',
+  benefitIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F8F8F8',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginRight: 12,
   },
   benefitText: {
     fontSize: 16,
     color: '#000000',
+    flex: 1,
   },
   loginButton: {
     backgroundColor: '#000000',
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 18,
+    borderRadius: 16,
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
   loginButtonText: {
     color: '#E5E0CD',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
   },
   closeButton: {
@@ -120,7 +159,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   closeButtonText: {
-    color: '#666666',
+    color: '#999999',
     fontSize: 16,
+    fontWeight: '500',
   },
 });

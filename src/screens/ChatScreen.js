@@ -186,7 +186,7 @@ export default function ChatScreen({ navigation, route }) {
 
   const handleScroll = (event) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-    const isAtBottom = contentOffset.y >= contentSize.height - layoutMeasurement.height - 50;
+    const isAtBottom = contentOffset.y >= contentSize.height - layoutMeasurement.height - 250;
     const shouldShow = !isAtBottom;
     
     if (shouldShow !== showScrollButton) {
