@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "Talk to Ira",
+    "slug": "talk-to-ira",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#FCFAF7"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.talktoira.app"
+    },
+    "android": {
+      "package": "com.talktoira.app"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-font"
+    ]
+  }
+}
