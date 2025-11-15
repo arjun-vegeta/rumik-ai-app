@@ -6,10 +6,9 @@ import { ActivityIndicator, View } from 'react-native';
 
 import SplashScreen from './src/screens/SplashScreen';
 import WelcomeScreen from './src/screens/NewWelcomeScreen';
-import PhoneLoginScreen from './src/screens/PhoneLoginScreen';
-import OTPScreen from './src/screens/OTPScreen';
 import ChatScreen from './src/screens/ChatScreen';
 import MessageLimitModal from './src/components/MessageLimitModal';
+import PhoneAuthModal from './src/components/PhoneAuthModal';
 
 const Stack = createStackNavigator();
 
@@ -55,9 +54,17 @@ export default function App() {
         }}
       >
         <Stack.Screen name="Welcome" component={WelcomeScreen} />
-        <Stack.Screen name="PhoneLogin" component={PhoneLoginScreen} />
-        <Stack.Screen name="OTP" component={OTPScreen} />
         <Stack.Screen name="Chat" component={ChatScreen} />
+        <Stack.Screen 
+          name="PhoneAuthModal" 
+          component={PhoneAuthModal}
+          options={{ 
+            presentation: 'transparentModal',
+            cardStyle: { backgroundColor: 'transparent' },
+            cardOverlayEnabled: true,
+            animationEnabled: true,
+          }}
+        />
         <Stack.Screen 
           name="MessageLimitModal" 
           component={MessageLimitModal}

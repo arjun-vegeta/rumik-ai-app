@@ -1,43 +1,54 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, ScrollView, Dimensions, Image } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Animated,
+  Dimensions,
+  Image,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-import Feature1SVG from '../../assets/svg/feature1.svg';
-import Feature2SVG from '../../assets/svg/feature2.svg';
-import Feature3SVG from '../../assets/svg/feature3.svg';
+import { Ionicons } from '@expo/vector-icons';
+import LottieView from 'lottie-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
+// Data for the feature carousel
 const features = [
   {
     title: 'Understands Intent',
     description: "Ira doesn't just hear words—she understands what you really mean.",
-    SvgComponent: Feature1SVG,
+    lottie: require('../../assets/lottie/feature1.json'),
   },
   {
     title: 'Infers Emotions',
     description: 'She picks up on how you feel and responds with genuine empathy.',
-    SvgComponent: Feature2SVG,
+    lottie: require('../../assets/lottie/feature2.json'),
   },
   {
     title: 'Multilingual',
     description: 'Converses naturally in Hinglish, Bangla, Marathi, and more.',
-    SvgComponent: Feature3SVG,
+    lottie: require('../../assets/lottie/feature3.json'),
   },
 ];
 
 export default function WelcomeScreen({ navigation }) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  
   const scrollViewRef = useRef(null);
+  const lottieRefs = useRef([
+    React.createRef(),
+    React.createRef(),
+    React.createRef(),
+  ]).current;
+
   const scrollX = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
-  const svgAnimations = useRef([
-    new Animated.Value(0),
-    new Animated.Value(0),
-    new Animated.Value(0),
-  ]).current;
 
+  // Initial screen load animation
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -52,34 +63,38 @@ export default function WelcomeScreen({ navigation }) {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [fadeAnim, slideAnim]);
 
+  // Lottie animation control
   useEffect(() => {
-    // Animate the current SVG
-    svgAnimations[currentIndex].setValue(0);
-    Animated.timing(svgAnimations[currentIndex], {
-      toValue: 1,
-      duration: 1200,
-      useNativeDriver: true,
-      easing: (t) => {
-        // Cubic bezier approximation: cubic-bezier(0.47, 0, 0.745, 0.715)
-        return t * t * (3 - 2 * t);
-      },
-    }).start();
-  }, [currentIndex]);
+    if (lottieRefs[currentIndex]?.current) {
+      lottieRefs.forEach((ref, index) => {
+        if (index === currentIndex) {
+          ref.current?.play();
+        } else {
+          ref.current?.reset();
+        }
+      });
+    }
+  }, [currentIndex, lottieRefs]);
 
+  // Auto-advance carousel every 2 seconds
   useEffect(() => {
     const interval = setInterval(() => {
-      const nextIndex = (currentIndex + 1) % features.length;
-      setCurrentIndex(nextIndex);
-      scrollViewRef.current?.scrollTo({
-        x: nextIndex * (width - 8),
-        animated: true,
+      setCurrentIndex((prevIndex) => {
+        const nextIndex = (prevIndex + 1) % features.length;
+        
+        scrollViewRef.current?.scrollTo({
+          x: nextIndex * (width - 8),
+          animated: true,
+        });
+        
+        return nextIndex;
       });
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [currentIndex]);
+  }, []);
 
   const handleScroll = Animated.event(
     [{ nativeEvent: { contentOffset: { x: scrollX } } }],
@@ -88,38 +103,60 @@ export default function WelcomeScreen({ navigation }) {
       listener: (event) => {
         const scrollPosition = event.nativeEvent.contentOffset.x;
         const index = Math.round(scrollPosition / (width - 8));
-        if (index !== currentIndex) {
+        if (index !== currentIndex && index >= 0 && index < features.length) {
           setCurrentIndex(index);
         }
       },
     }
   );
 
+  const handlePhoneLogin = () => {
+    navigation.navigate('PhoneAuthModal');
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      await AsyncStorage.setItem('phoneNumber', 'google_user');
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Chat', params: { isGuest: false } }],
+      });
+    } catch (error) {
+      console.error('Error with Google login:', error);
+    }
+  };
+
+  const handleGuestLogin = () => {
+    navigation.navigate('Chat', { isGuest: true });
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
-        <Animated.View 
+        {/* Header Section */}
+        <Animated.View
           style={[
             styles.headerSection,
             {
               opacity: fadeAnim,
               transform: [{ translateY: slideAnim }],
-            }
+            },
           ]}
         >
-          <Image 
+          <Image
             source={require('../../assets/meetira.avif')}
             style={styles.meetIraImage}
             resizeMode="contain"
           />
         </Animated.View>
 
-        <Animated.View 
+        {/* Carousel Section */}
+        <Animated.View
           style={[
             styles.carouselSection,
             {
               opacity: fadeAnim,
-            }
+            },
           ]}
         >
           <Animated.ScrollView
@@ -135,51 +172,21 @@ export default function WelcomeScreen({ navigation }) {
             contentContainerStyle={styles.carouselContent}
           >
             {features.map((feature, index) => (
-              <Animated.View 
-                key={index} 
-                style={[
-                  styles.featureCard,
-                  {
-                    opacity: scrollX.interpolate({
-                      inputRange: [
-                        (index - 1) * (width - 8),
-                        index * (width - 8),
-                        (index + 1) * (width - 8),
-                      ],
-                      outputRange: [0.3, 1, 0.3],
-                      extrapolate: 'clamp',
-                    }),
-                    transform: [{
-                      scale: scrollX.interpolate({
-                        inputRange: [
-                          (index - 1) * (width - 8),
-                          index * (width - 8),
-                          (index + 1) * (width - 8),
-                        ],
-                        outputRange: [0.9, 1, 0.9],
-                        extrapolate: 'clamp',
-                      }),
-                    }],
-                  }
-                ]}
-              >
-                <Animated.View 
-                  style={[
-                    styles.svgContainer,
-                    {
-                      opacity: svgAnimations[index],
-                      transform: [{ scale: 1.8 }],
-                    }
-                  ]}
-                >
-                  <feature.SvgComponent 
-                    width={width - 80}
-                    height={200}
+              <View key={index} style={styles.featureCard}>
+                <View style={styles.lottieContainer}>
+                  <LottieView
+                    ref={lottieRefs[index]}
+                    source={feature.lottie}
+                    style={styles.lottieAnimation}
+                    autoPlay={index === 0}
+                    loop={false}
                   />
-                </Animated.View>
+                </View>
                 <Text style={styles.featureTitle}>{feature.title}</Text>
-                <Text style={styles.featureDescription}>{feature.description}</Text>
-              </Animated.View>
+                <Text style={styles.featureDescription}>
+                  {feature.description}
+                </Text>
+              </View>
             ))}
           </Animated.ScrollView>
 
@@ -190,63 +197,66 @@ export default function WelcomeScreen({ navigation }) {
                 index * (width - 8),
                 (index + 1) * (width - 8),
               ];
-
               const dotWidth = scrollX.interpolate({
                 inputRange,
                 outputRange: [8, 24, 8],
                 extrapolate: 'clamp',
               });
-
               const opacity = scrollX.interpolate({
                 inputRange,
                 outputRange: [0.3, 1, 0.3],
                 extrapolate: 'clamp',
               });
-
               return (
                 <Animated.View
                   key={index}
-                  style={[
-                    styles.dot,
-                    {
-                      width: dotWidth,
-                      opacity,
-                    },
-                  ]}
+                  style={[styles.dot, { width: dotWidth, opacity }]}
                 />
               );
             })}
           </View>
         </Animated.View>
 
-        <Animated.View 
+        {/* Bottom Section */}
+        <Animated.View
           style={[
-            styles.buttonContainer,
+            styles.bottomContainer,
             {
               opacity: fadeAnim,
               transform: [{ translateY: slideAnim }],
-            }
+            },
           ]}
         >
-          <TouchableOpacity 
-            style={styles.primaryButton}
-            onPress={() => navigation.navigate('PhoneLogin')}
+          <TouchableOpacity
+            style={styles.phoneInputContainer}
+            onPress={handlePhoneLogin}
             activeOpacity={0.8}
           >
-            <Text style={styles.primaryButtonText}>Login with Phone</Text>
+            <Ionicons name="call" size={20} color="#000000" style={styles.phoneIcon} />
+            <Text style={styles.phoneInputPlaceholder}>Enter your phone number</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
-            style={styles.secondaryButton}
-            onPress={() => navigation.navigate('Chat', { isGuest: true })}
+          <TouchableOpacity
+            style={styles.googleButton}
+            onPress={handleGoogleLogin}
             activeOpacity={0.8}
           >
-            <Text style={styles.secondaryButtonText}>Continue as Guest</Text>
+            <Ionicons name="logo-google" size={20} color="#E5E0CD" />
+            <Text style={styles.googleButtonText}>Continue with Google</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity
+            style={styles.guestButton}
+            onPress={handleGuestLogin}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.guestButtonText}>Continue as Guest</Text>
+          </TouchableOpacity>
+
+          {/* Footer / Powered By */}
           <View style={styles.poweredByContainer}>
             <Text style={styles.poweredByText}>powered by:</Text>
-            <Image 
+            <Image
               source={require('../../assets/logo.avif')}
               style={styles.logo}
               resizeMode="contain"
@@ -265,28 +275,23 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+    paddingVertical: 20,
     justifyContent: 'space-between',
-    paddingVertical: 40,
   },
   headerSection: {
     paddingHorizontal: 4,
-    paddingTop: 20,
+    paddingTop: 10,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   meetIraImage: {
     width: width - 8,
     height: 80,
   },
-  mainTitle: {
-    fontSize: 48,
-    fontWeight: '700',
-    color: '#000000',
-    textAlign: 'center',
-  },
   carouselSection: {
     flex: 1,
     justifyContent: 'center',
-    paddingVertical: 40,
+    paddingVertical: 20,
   },
   carousel: {
     flexGrow: 0,
@@ -298,66 +303,8 @@ const styles = StyleSheet.create({
     width: width - 8,
     borderRadius: 24,
     padding: 16,
-    marginRight: 0,
     minHeight: 200,
     justifyContent: 'center',
-  },
-  conversationPreview: {
-    paddingHorizontal: 8,
-    marginBottom: 24,
-  },
-  previewMessageContainer: {
-    marginBottom: 10,
-  },
-  previewIraContainer: {
-    alignItems: 'flex-start',
-  },
-  previewUserContainer: {
-    alignItems: 'flex-end',
-  },
-  previewMessageRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 8,
-  },
-  previewAvatar: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#E5E0CD',
-  },
-  previewBubble: {
-    maxWidth: '75%',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 18,
-    shadowColor: '#000000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  previewIraBubble: {
-    backgroundColor: '#000000',
-    borderBottomLeftRadius: 4,
-  },
-  previewUserBubble: {
-    backgroundColor: '#f4f0de',
-    borderBottomRightRadius: 4,
-  },
-  previewMessageText: {
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  previewIraText: {
-    color: '#E5E0CD',
-  },
-  previewUserText: {
-    color: '#000000',
   },
   featureTitle: {
     fontSize: 24,
@@ -386,33 +333,81 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: '#000000',
   },
-  buttonContainer: {
-    gap: 16,
-    paddingHorizontal: 24,
-  },
-  primaryButton: {
-    backgroundColor: '#000000',
-    paddingVertical: 16,
-    borderRadius: 12,
+  lottieContainer: {
     alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+    paddingHorizontal: 16,
+    transform: [{ scale: 2.2}],
   },
-  primaryButtonText: {
+  lottieAnimation: {
+    width: width - 80,
+    height: 180,
+  },
+  bottomContainer: {
+    gap: 12,
+    paddingHorizontal: 24,
+    paddingBottom: 10,
+  },
+  phoneInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E0CD',
+    borderRadius: 12,
+    paddingVertical: 4,
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+    minHeight: 56,
+  },
+  phoneIcon: {
+    marginRight: 8,
+  },
+  phoneInputPlaceholder: {
+    color: '#999999',
+    fontSize: 15,
+    letterSpacing: 0,
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#000000',
+    borderRadius: 12,
+    gap: 10,
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+    minHeight: 56,
+  },
+  googleButtonText: {
     color: '#E5E0CD',
     fontSize: 16,
     fontWeight: '600',
   },
-  secondaryButton: {
+  guestButton: {
     backgroundColor: 'transparent',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#000000',
   },
-  secondaryButtonText: {
-    color: '#000000',
-    fontSize: 16,
-    fontWeight: '600',
+  guestButtonText: {
+    color: '#999999',
+    fontSize: 15,
+    fontWeight: '500',
   },
   poweredByContainer: {
     flexDirection: 'row',
@@ -429,15 +424,4 @@ const styles = StyleSheet.create({
     height: 24,
     width: 96,
   },
-  svgContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 32,
-    paddingHorizontal: 16,
-  },
-  svgImage: {
-    width: width - 80,
-    height: 200,
-  },
 });
-

@@ -136,8 +136,9 @@ export default function ChatScreen({ navigation, route }) {
   const sendMessage = async () => {
     if (!inputText.trim()) return;
 
-    // Check message limit for guests
-    if (isGuest && messageCount >= 3) {
+    // Check message limit for guests (check if next message would exceed limit)
+    const newCount = messageCount + 1;
+    if (isGuest && newCount > 3) {
       navigation.navigate('MessageLimitModal');
       return;
     }
@@ -154,7 +155,6 @@ export default function ChatScreen({ navigation, route }) {
     setInputText('');
     setIsLoading(true);
 
-    const newCount = messageCount + 1;
     setMessageCount(newCount);
 
     try {

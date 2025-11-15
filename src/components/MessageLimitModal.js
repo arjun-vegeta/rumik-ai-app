@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 export default function MessageLimitModal({ navigation }) {
   const handleLogin = () => {
-    navigation.navigate('PhoneLogin');
+    navigation.navigate('PhoneAuthModal');
   };
 
   return (
