@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ActivityIndicator, View } from 'react-native';
 
 import SplashScreen from './src/screens/SplashScreen';
-import WelcomeScreen from './src/screens/WelcomeScreen';
+import WelcomeScreen from './src/screens/NewWelcomeScreen';
 import PhoneLoginScreen from './src/screens/PhoneLoginScreen';
 import OTPScreen from './src/screens/OTPScreen';
 import ChatScreen from './src/screens/ChatScreen';
