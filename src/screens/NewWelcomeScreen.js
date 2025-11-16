@@ -9,6 +9,7 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import LottieView from 'lottie-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -131,8 +132,13 @@ export default function WelcomeScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
+    <LinearGradient
+      colors={['#FFFDF6', '#FFF4EC', '#FFBFB4']}
+      locations={[0, 0.27, 1]}
+      style={styles.gradient}
+    >
+      <SafeAreaView style={styles.container}>
+        <View style={styles.content}>
         {/* Header Section */}
         <Animated.View
           style={[
@@ -264,14 +270,18 @@ export default function WelcomeScreen({ navigation }) {
           </View>
         </Animated.View>
       </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#FCFAF7',
+    backgroundColor: 'transparent',
   },
   content: {
     flex: 1,
@@ -355,7 +365,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E5E0CD',
+    borderColor: '#000000',
     borderRadius: 12,
     paddingVertical: 4,
     shadowColor: '#000000',
@@ -372,7 +382,8 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   phoneInputPlaceholder: {
-    color: '#999999',
+    color: '#393939ff',
+    fontWeight: '600',
     fontSize: 15,
     letterSpacing: 0,
   },
@@ -405,8 +416,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   guestButtonText: {
-    color: '#999999',
-    fontSize: 15,
+    color: '#393939ff',
+    fontSize: 16,
     fontWeight: '500',
   },
   poweredByContainer: {
@@ -418,10 +429,10 @@ const styles = StyleSheet.create({
   },
   poweredByText: {
     fontSize: 14,
-    color: '#999999',
+    color: '#393939ff',
   },
   logo: {
-    height: 24,
-    width: 96,
+    height: 26,
+    width: 98,
   },
 });

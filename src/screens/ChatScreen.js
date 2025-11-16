@@ -15,6 +15,7 @@ import {
   Image
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
@@ -300,54 +301,66 @@ export default function ChatScreen({ navigation, route }) {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Image 
-          source={require('../../assets/ira-dp.avif')}
-          style={styles.avatarImage}
-        />
-        <View style={styles.headerInfo}>
-          <Text style={styles.headerName}>Ira</Text>
-          <View style={styles.onlineContainer}>
-            <View style={styles.onlineDot} />
-            <Text style={styles.onlineText}>Online</Text>
-          </View>
-        </View>
-        <TouchableOpacity 
-          style={styles.menuButton}
-          onPress={() => setShowMenu(!showMenu)}
-        >
-          <Ionicons name="ellipsis-vertical" size={24} color="#000000" />
-        </TouchableOpacity>
-        
-        {showMenu && (
-          <>
-            <TouchableOpacity 
-              style={styles.menuOverlay}
-              activeOpacity={1}
-              onPress={() => setShowMenu(false)}
+    <View style={styles.gradient}>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.headerWrapper}>
+          <View style={styles.header}>
+            <Image 
+              source={require('../../assets/ira-dp.avif')}
+              style={styles.avatarImage}
             />
-            <View style={styles.menuDropdown}>
-              <TouchableOpacity 
-                style={styles.menuItem}
-                onPress={handleClearChat}
-              >
-                <Ionicons name="trash-outline" size={20} color="#000000" />
-                <Text style={styles.menuItemText}>Clear Chat</Text>
+            <View style={styles.headerInfo}>
+              <Text style={styles.headerName}>Ira</Text>
+              <View style={styles.onlineContainer}>
+                <View style={styles.onlineDot} />
+                <Text style={styles.onlineText}>Online</Text>
+              </View>
+            </View>
+            
+            <View style={styles.headerActions}>
+              <TouchableOpacity style={styles.iconButton}>
+                <Ionicons name="search-outline" size={22} color="#FF9B8A" />
               </TouchableOpacity>
-              {!isGuest && (
+              <TouchableOpacity style={styles.iconButton}>
+                <Ionicons name="call-outline" size={22} color="#FF9B8A" />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.iconButton}
+                onPress={() => setShowMenu(!showMenu)}
+              >
+                <Ionicons name="ellipsis-vertical" size={22} color="#FF9B8A" />
+              </TouchableOpacity>
+            </View>
+          </View>
+          
+          {showMenu && (
+            <>
+              <TouchableOpacity 
+                style={styles.menuOverlay}
+                activeOpacity={1}
+                onPress={() => setShowMenu(false)}
+              />
+              <View style={styles.menuDropdown}>
                 <TouchableOpacity 
                   style={styles.menuItem}
-                  onPress={handleLogout}
+                  onPress={handleClearChat}
                 >
-                  <Ionicons name="log-out-outline" size={20} color="#000000" />
-                  <Text style={styles.menuItemText}>Logout</Text>
+                  <Ionicons name="trash-outline" size={20} color="#000000" />
+                  <Text style={styles.menuItemText}>Clear Chat</Text>
                 </TouchableOpacity>
-              )}
-            </View>
-          </>
-        )}
-      </View>
+                {!isGuest && (
+                  <TouchableOpacity 
+                    style={styles.menuItem}
+                    onPress={handleLogout}
+                  >
+                    <Ionicons name="log-out-outline" size={20} color="#000000" />
+                    <Text style={styles.menuItemText}>Logout</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </>
+          )}
+        </View>
 
       <View style={styles.chatContainer}>
         <FlatList
@@ -390,81 +403,81 @@ export default function ChatScreen({ navigation, route }) {
                 style={styles.scrollButtonInner}
                 onPress={scrollToBottom}
               >
-                <Ionicons name="arrow-down" size={24} color="#000000" />
+                <Ionicons name="arrow-down" size={24} color="#FF9B8A" />
               </TouchableOpacity>
             </Animated.View>
           )}
-          <TextInput
-            style={styles.input}
-            placeholder="Type a message..."
-            placeholderTextColor="#999999"
-            value={inputText}
-            onChangeText={setInputText}
-            multiline
-            maxLength={500}
-          />
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.input}
+              placeholder="Type a message"
+              placeholderTextColor="#999999"
+              value={inputText}
+              onChangeText={setInputText}
+              multiline
+              maxLength={500}
+            />
+            <TouchableOpacity style={styles.attachButton}>
+              <Ionicons name="attach-outline" size={24} color="#FF9B8A" />
+            </TouchableOpacity>
+          </View>
           <TouchableOpacity 
             style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
             onPress={sendMessage}
             disabled={!inputText.trim() || isLoading}
           >
-            <Ionicons name="send" size={20} color="#E5E0CD" />
+            <Ionicons name="send" size={22} color="#FF9B8A" />
           </TouchableOpacity>
         </View>
       </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+    backgroundColor: '#FFF4EC',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#FCFAF7',
+    backgroundColor: 'transparent',
+  },
+  headerWrapper: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
+    backgroundColor: 'transparent',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 30,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E0CD',
     shadowColor: '#000000',
     shadowOffset: {
       width: 0,
-      height: 1,
+      height: 2,
     },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
     elevation: 2,
-    zIndex: 100,
   },
   avatarImage: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2,
-    borderColor: '#E5E0CD',
-  },
-  avatarSmall: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#000000',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarSmallText: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#E5E0CD',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    borderWidth: 0,
   },
   headerInfo: {
     marginLeft: 12,
     flex: 1,
   },
   headerName: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: '#000000',
   },
@@ -474,23 +487,34 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   onlineDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: '#4CAF50',
     marginRight: 6,
   },
   onlineText: {
-    fontSize: 12,
-    color: '#666666',
+    fontSize: 13,
+    color: '#4CAF50',
+    fontWeight: '500',
   },
-  messageCounter: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666666',
+  headerActions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  iconButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#FF9B8A',
   },
   chatContainer: {
     flex: 1,
+    backgroundColor: 'transparent',
   },
   messagesList: {
     paddingHorizontal: 16,
@@ -506,33 +530,36 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   messageBubble: {
-    maxWidth: '80%',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 20,
+    maxWidth: '75%',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 30,
     shadowColor: '#000000',
     shadowOffset: {
       width: 0,
       height: 1,
     },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
   },
   iraBubble: {
-    backgroundColor: '#000000',
-    borderBottomLeftRadius: 4,
+    backgroundColor: '#FFB4A8',
+    borderRadius: 30,
+    borderTopLeftRadius: 4,
   },
   userBubble: {
-    backgroundColor: '#f4f0de',
-    borderBottomRightRadius: 4,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 30,
+    borderTopRightRadius: 4,
+
   },
   messageText: {
     fontSize: 15,
-    lineHeight: 20,
+    lineHeight: 22,
   },
   iraText: {
-    color: '#E5E0CD',
+    color: '#000000',
   },
   userText: {
     color: '#000000',
@@ -546,7 +573,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginLeft: 12,
     fontSize: 14,
-    color: '#666666',
+    color: '#999999',
     fontStyle: 'italic',
   },
   typingIndicator: {
@@ -558,65 +585,75 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#000000',
+    backgroundColor: '#FF9B8A',
   },
   inputContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#E5E0CD',
+    paddingVertical: 16,
+    backgroundColor: 'transparent',
+    borderTopWidth: 0,
     position: 'relative',
+    gap: 12,
+  },
+  inputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 30,
+    paddingHorizontal: 20,
+    minHeight: 56,
     shadowColor: '#000000',
     shadowOffset: {
       width: 0,
-      height: -1,
+      height: 2,
     },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   input: {
     flex: 1,
-    backgroundColor: '#F8F8F8',
-    borderWidth: 1,
-    borderColor: '#E5E0CD',
-    borderRadius: 24,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    fontSize: 15,
+    fontSize: 16,
     color: '#000000',
     maxHeight: 100,
+    paddingVertical: 12,
   },
-  sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#000000',
-    justifyContent: 'center',
-    alignItems: 'center',
+  attachButton: {
+    padding: 4,
     marginLeft: 8,
   },
-  sendButtonDisabled: {
-    opacity: 0.5,
+  sendButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#ffffffff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  sendButtonText: {
-    fontSize: 20,
-    color: '#E5E0CD',
-    fontWeight: '600',
+  sendButtonDisabled: {
+    opacity: 0.4,
   },
   scrollToBottomButton: {
     position: 'absolute',
-    bottom: 90,
-    right: 16,
+    bottom: 100,
+    right: 24,
     zIndex: 10,
   },
   scrollButtonInner: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
@@ -625,14 +662,11 @@ const styles = StyleSheet.create({
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
     elevation: 5,
-    borderWidth: 1,
-    borderColor: '#E5E0CD',
-  },
-  menuButton: {
-    padding: 8,
+    borderWidth: 1.5,
+    borderColor: '#FF9B8A',
   },
   menuOverlay: {
     position: 'absolute',
@@ -644,12 +678,12 @@ const styles = StyleSheet.create({
   },
   menuDropdown: {
     position: 'absolute',
-    top: 50,
+    top: 60,
     right: 16,
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#E5E0CD',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#FF9B8A',
     shadowColor: '#000000',
     shadowOffset: {
       width: 0,

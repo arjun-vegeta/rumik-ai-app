@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated, Dimensions, Image } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const { width, height } = Dimensions.get('window');
 
@@ -41,30 +42,39 @@ export default function SplashScreen({ onFinish }) {
   });
 
   return (
-    <View style={styles.container}>
-      <Animated.View
-        style={{
-          opacity: fadeAnim,
-          transform: [
-            { rotate: rotation },
-            { scale: scaleAnim },
-          ],
-        }}
-      >
-        <Image
-          source={require('../../assets/3d-logo.avif')}
-          style={styles.logo}
-          resizeMode="contain"
-        />
-      </Animated.View>
-    </View>
+    <LinearGradient
+      colors={['#FFFDF6', '#FFF4EC', '#FFBFB4']}
+      locations={[0, 0.27, 1]}
+      style={styles.gradient}
+    >
+      <View style={styles.container}>
+        <Animated.View
+          style={{
+            opacity: fadeAnim,
+            transform: [
+              { rotate: rotation },
+              { scale: scaleAnim },
+            ],
+          }}
+        >
+          <Image
+            source={require('../../assets/3d-logo.avif')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </Animated.View>
+      </View>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
+  gradient: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#FCFAF7',
+    backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
   },

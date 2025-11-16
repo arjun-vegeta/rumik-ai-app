@@ -12,6 +12,7 @@ import {
   Keyboard,
   Dimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -214,8 +215,13 @@ export default function PhoneAuthModal({ navigation, route }) {
           },
         ]}
       >
-        {/* Handle Bar */}
-        <View style={styles.handleBar} />
+        <LinearGradient
+          colors={['#FFFDF6', '#FFF4EC', '#FFBFB4']}
+          locations={[0, 0.27, 1]}
+          style={styles.gradient}
+        >
+          {/* Handle Bar */}
+          <View style={styles.handleBar} />
 
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -365,6 +371,7 @@ export default function PhoneAuthModal({ navigation, route }) {
             </Animated.View>
           </View>
         </KeyboardAvoidingView>
+        </LinearGradient>
       </Animated.View>
     </View>
   );
@@ -380,10 +387,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContainer: {
-    backgroundColor: '#FCFAF7',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     height: height * 0.9,
+    overflow: 'hidden',
     shadowColor: '#000000',
     shadowOffset: {
       width: 0,
@@ -392,6 +399,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 10,
+  },
+  gradient: {
+    flex: 1,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
   keyboardView: {
     flex: 1,
@@ -427,7 +439,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 15,
-    color: '#666666',
+    color: '#393939ff',
     textAlign: 'center',
   },
   phoneNumberRow: {
@@ -462,8 +474,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#E5E0CD',
+    borderWidth: 1,
+    borderColor: '#000000',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 4,
@@ -499,8 +511,8 @@ const styles = StyleSheet.create({
     width: 48,
     height: 56,
     backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#E5E0CD',
+    borderWidth: 1,
+    borderColor: '#000000',
     borderRadius: 12,
     fontSize: 24,
     fontWeight: '600',
@@ -553,6 +565,6 @@ const styles = StyleSheet.create({
   },
   timerText: {
     fontSize: 15,
-    color: '#999999',
+    color: '#393939ff',
   },
 });
