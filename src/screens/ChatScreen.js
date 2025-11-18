@@ -438,7 +438,7 @@ export default function ChatScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   gradient: {
     flex: 1,
-    backgroundColor: '#FFF4EC',
+    backgroundColor: '#FFE8E3',
   },
   container: {
     flex: 1,
@@ -622,7 +622,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   attachButton: {
-    padding: 4,
+    padding: 2,
     marginLeft: 8,
   },
   sendButton: {

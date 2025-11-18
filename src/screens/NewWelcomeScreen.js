@@ -39,6 +39,7 @@ export default function WelcomeScreen({ navigation }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   
   const scrollViewRef = useRef(null);
+  const intervalRef = useRef(null);
   const lottieRefs = useRef([
     React.createRef(),
     React.createRef(),
@@ -79,9 +80,42 @@ export default function WelcomeScreen({ navigation }) {
     }
   }, [currentIndex, lottieRefs]);
 
-  // Auto-advance carousel every 2 seconds
+  // Auto-advance carousel every 3 seconds
   useEffect(() => {
-    const interval = setInterval(() => {
+    const startInterval = () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      
+      intervalRef.current = setInterval(() => {
+        setCurrentIndex((prevIndex) => {
+          const nextIndex = (prevIndex + 1) % features.length;
+          
+          scrollViewRef.current?.scrollTo({
+            x: nextIndex * (width - 8),
+            animated: true,
+          });
+          
+          return nextIndex;
+        });
+      }, 2000);
+    };
+
+    startInterval();
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
+
+  const resetTimer = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+    
+    intervalRef.current = setInterval(() => {
       setCurrentIndex((prevIndex) => {
         const nextIndex = (prevIndex + 1) % features.length;
         
@@ -92,10 +126,8 @@ export default function WelcomeScreen({ navigation }) {
         
         return nextIndex;
       });
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, []);
+    }, 2500);
+  };
 
   const handleScroll = Animated.event(
     [{ nativeEvent: { contentOffset: { x: scrollX } } }],
@@ -106,6 +138,7 @@ export default function WelcomeScreen({ navigation }) {
         const index = Math.round(scrollPosition / (width - 8));
         if (index !== currentIndex && index >= 0 && index < features.length) {
           setCurrentIndex(index);
+          resetTimer();
         }
       },
     }
@@ -302,12 +335,15 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     paddingVertical: 20,
+    overflow: 'visible',
   },
   carousel: {
     flexGrow: 0,
+    overflow: 'visible',
   },
   carouselContent: {
     paddingHorizontal: 4,
+    overflow: 'visible',
   },
   featureCard: {
     width: width - 8,
@@ -315,6 +351,7 @@ const styles = StyleSheet.create({
     padding: 16,
     minHeight: 200,
     justifyContent: 'center',
+    overflow: 'visible',
   },
   featureTitle: {
     fontSize: 24,
@@ -349,6 +386,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     paddingHorizontal: 16,
     transform: [{ scale: 2.2}],
+    overflow: 'visible',
   },
   lottieAnimation: {
     width: width - 80,
