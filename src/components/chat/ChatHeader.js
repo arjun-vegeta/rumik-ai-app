@@ -43,8 +43,8 @@ export default function ChatHeader({ onCallPress, onMenuPress }) {
 const styles = StyleSheet.create({
   headerWrapper: {
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 16,
+    paddingTop: 0,
+    paddingBottom: 8,
     backgroundColor: 'transparent',
   },
   header: {

@@ -8,6 +8,7 @@ export default function ChatMenu({
   onClearChat, 
   onSimulateCall,
   onTestBackgroundCall,
+  onFeedback,
   onLogout,
   isGuest 
 }) {
@@ -22,23 +23,28 @@ export default function ChatMenu({
       />
       <View style={styles.menuDropdown}>
         <TouchableOpacity style={styles.menuItem} onPress={onClearChat}>
-          <Ionicons name="trash-outline" size={20} color="#000000" style={styles.iconThick} />
+          <Ionicons name="trash-outline" size={20} color="#D17A6F" style={styles.iconThick} />
           <Text style={styles.menuItemText}>Clear Chat</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.menuItem} onPress={onSimulateCall}>
-          <Ionicons name="call-outline" size={20} color="#000000" style={styles.iconThick} />
+          <Ionicons name="call-outline" size={20} color="#D17A6F" style={styles.iconThick} />
           <Text style={styles.menuItemText}>Simulate Incoming Call</Text>
         </TouchableOpacity>
         
         <TouchableOpacity style={styles.menuItem} onPress={onTestBackgroundCall}>
-          <Ionicons name="notifications-outline" size={20} color="#000000" style={styles.iconThick} />
+          <Ionicons name="notifications-outline" size={20} color="#D17A6F" style={styles.iconThick} />
           <Text style={styles.menuItemText}>Test Background Call</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity style={styles.menuItem} onPress={onFeedback}>
+          <Ionicons name="chatbubble-ellipses-outline" size={20} color="#D17A6F" style={styles.iconThick} />
+          <Text style={styles.menuItemText}>Send Feedback</Text>
         </TouchableOpacity>
         
         {!isGuest && (
           <TouchableOpacity style={styles.menuItem} onPress={onLogout}>
-            <Ionicons name="log-out-outline" size={20} color="#000000" style={styles.iconThick} />
+            <Ionicons name="log-out-outline" size={20} color="rgba(246, 41, 41, 1)" style={styles.iconThick} />
             <Text style={styles.menuItemText}>Logout</Text>
           </TouchableOpacity>
         )}

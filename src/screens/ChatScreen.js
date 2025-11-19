@@ -27,6 +27,7 @@ import MessageBubble from '../components/chat/MessageBubble';
 import SwipeableMessage from '../components/SwipeableMessage';
 import IncomingCallOverlay from '../components/IncomingCallOverlay';
 import MessageOptionsModal from '../components/MessageOptionsModal';
+import FeedbackModal from '../components/FeedbackModal';
 
 // Hooks
 import useChatLogic from '../hooks/useChatLogic';
@@ -61,6 +62,7 @@ export default function ChatScreen({ navigation, route }) {
   // UI state
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [incomingCall, setIncomingCall] = useState(false);
   const [selectedMessage, setSelectedMessage] = useState(null);
@@ -436,6 +438,10 @@ export default function ChatScreen({ navigation, route }) {
             );
             setTimeout(() => CallKeepService.displayIncomingCall('Ira'), 5000);
           }}
+          onFeedback={() => {
+            setShowMenu(false);
+            setShowFeedback(true);
+          }}
           onLogout={() => {
             setShowMenu(false);
             handleLogout();
@@ -512,6 +518,7 @@ export default function ChatScreen({ navigation, route }) {
               rightPillWidthAnim={rightPillWidthAnim}
               actionsOpacityAnim={actionsOpacityAnim}
               sendButtonScaleAnim={sendButtonScaleAnim}
+              keyboardVisible={keyboardHeight > 0}
             />
           </View>
         </View>
@@ -538,6 +545,12 @@ export default function ChatScreen({ navigation, route }) {
         onDelete={() => selectedMessage && handleMessageDelete(selectedMessage.id)}
         isOwnMessage={selectedMessage?.sender === 'user'}
         messageLayout={messageLayout}
+      />
+
+      <FeedbackModal
+        visible={showFeedback}
+        onClose={() => setShowFeedback(false)}
+        isGuest={isGuest}
       />
     </View>
   );

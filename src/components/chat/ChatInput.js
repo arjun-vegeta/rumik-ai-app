@@ -12,9 +12,10 @@ export default function ChatInput({
   rightPillWidthAnim,
   actionsOpacityAnim,
   sendButtonScaleAnim,
+  keyboardVisible,
 }) {
   return (
-    <View style={styles.inputContainer}>
+    <View style={[styles.inputContainer, !keyboardVisible && styles.inputContainerWithMargin]}>
       <Animated.View 
         style={[
           styles.inputWrapper,
@@ -110,6 +111,9 @@ const styles = StyleSheet.create({
     borderTopWidth: 0,
     position: 'relative',
     gap: 8,
+  },
+  inputContainerWithMargin: {
+    marginBottom: 12,
   },
   inputWrapper: {
     flexDirection: 'row',
