@@ -7,8 +7,11 @@ import {
   Alert,
   Animated,
   Keyboard,
-  AppState
+  AppState,
+  TouchableOpacity,
+  Text
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Notifications from 'expo-notifications';
@@ -492,7 +495,7 @@ export default function ChatScreen({ navigation, route }) {
                   style={styles.scrollButtonInner}
                   onPress={scrollToBottom}
                 >
-                  <Ionicons name="arrow-down" size={24} color="#FF9B8A" />
+                  <Ionicons name="arrow-down" size={20} color="#D17A6F" style={styles.iconThick} />
                 </TouchableOpacity>
               </Animated.View>
             )}
@@ -599,8 +602,8 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   scrollButtonInner: {
-    width: 48,
-    height: 48,
+    width: 40,
+    height: 40,
     borderRadius: 24,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
@@ -608,12 +611,15 @@ const styles = StyleSheet.create({
     shadowColor: '#000000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 5,
-    borderWidth: 1.5,
-    borderColor: '#FF9B8A',
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  iconThick: {
+    textShadowColor: 'rgba(0, 0, 0, 0.15)',
+    textShadowOffset: { width: 0.5, height: 0.5 },
+    textShadowRadius: 0.5,
   },
 });

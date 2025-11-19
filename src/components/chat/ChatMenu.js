@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
   },
   menuDropdown: {
     position: 'absolute',
-    top: 70,
+    top: 130,
     right: 16,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
