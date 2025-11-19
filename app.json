@@ -1,26 +1,47 @@
 {
   "expo": {
-    "name": "Talk to Ira",
+    "name": "Ira",
     "slug": "talk-to-ira",
     "version": "1.0.0",
     "orientation": "portrait",
+    "icon": "./assets/rumikicon.png",
     "userInterfaceStyle": "light",
     "splash": {
       "resizeMode": "contain",
       "backgroundColor": "#FCFAF7"
     },
+    "plugins": [
+      "expo-font",
+      [
+        "@config-plugins/react-native-callkeep",
+        {
+          "ios": {
+            "imageName": "CallKitIcon"
+          },
+          "android": {
+            "imageName": "ic_launcher",
+            "selfManaged": true
+          }
+        }
+      ]
+    ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.talktoira.app"
+      "bundleIdentifier": "com.talktoira.app",
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "voip",
+          "audio"
+        ]
+      }
     },
     "android": {
-      "package": "com.talktoira.app"
-    },
-    "web": {
-      "bundler": "metro"
-    },
-    "plugins": [
-      "expo-font"
-    ]
+      "package": "com.talktoira.app",
+      "permissions": [
+        "READ_PHONE_STATE",
+        "READ_CALL_LOG",
+        "MANAGE_OWN_CALLS"
+      ]
+    }
   }
 }

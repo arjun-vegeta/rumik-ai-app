@@ -7,6 +7,7 @@ import { ActivityIndicator, View } from 'react-native';
 import SplashScreen from './src/screens/SplashScreen';
 import WelcomeScreen from './src/screens/NewWelcomeScreen';
 import ChatScreen from './src/screens/ChatScreen';
+import CallScreen from './src/screens/CallScreen';
 import MessageLimitModal from './src/components/MessageLimitModal';
 import PhoneAuthModal from './src/components/PhoneAuthModal';
 
@@ -55,18 +56,27 @@ export default function App() {
       >
         <Stack.Screen name="Welcome" component={WelcomeScreen} />
         <Stack.Screen name="Chat" component={ChatScreen} />
-        <Stack.Screen 
-          name="PhoneAuthModal" 
+        <Stack.Screen
+          name="CallScreen"
+          component={CallScreen}
+          options={{
+            presentation: 'fullScreenModal',
+            animationEnabled: true,
+            gestureEnabled: false,
+          }}
+        />
+        <Stack.Screen
+          name="PhoneAuthModal"
           component={PhoneAuthModal}
-          options={{ 
+          options={{
             presentation: 'transparentModal',
             cardStyle: { backgroundColor: 'transparent' },
             cardOverlayEnabled: true,
             animationEnabled: true,
           }}
         />
-        <Stack.Screen 
-          name="MessageLimitModal" 
+        <Stack.Screen
+          name="MessageLimitModal"
           component={MessageLimitModal}
           options={{ presentation: 'modal' }}
         />

@@ -1,24 +1,35 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
-  FlatList, 
-  StyleSheet, 
-  KeyboardAvoidingView,
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  FlatList,
+  StyleSheet,
   Platform,
-  ActivityIndicator,
   Alert,
   Animated,
   Keyboard,
-  Image
+  Image,
+  AppState
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
+import * as Notifications from 'expo-notifications';
+import { getDevServerURL } from '../utils/devServer';
+import IncomingCallOverlay from '../components/IncomingCallOverlay';
+import CallKeepService from '../utils/callKeep';
+
+// Configure notifications
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 export default function ChatScreen({ navigation, route }) {
   const isGuest = route.params?.isGuest ?? false;
@@ -29,12 +40,89 @@ export default function ChatScreen({ navigation, route }) {
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [incomingCall, setIncomingCall] = useState(false);
+
+  const appState = useRef(AppState.currentState);
   const flatListRef = useRef(null);
   const scrollButtonAnim = useRef(new Animated.Value(0)).current;
   const messageAnimations = useRef({}).current;
   const typingDot1 = useRef(new Animated.Value(0)).current;
   const typingDot2 = useRef(new Animated.Value(0)).current;
   const typingDot3 = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const getPermissions = async () => {
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission required', 'Please enable notifications to receive calls.');
+      }
+    };
+    getPermissions();
+  }, []);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      appState.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    // Initialize CallKeep
+    CallKeepService.setup();
+
+    // Handle native call answer - store navigation reference
+    CallKeepService.setNavigationHandler((mode, initialStatus) => {
+      navigation.navigate('CallScreen', { mode, initialStatus });
+    });
+
+    return () => {
+      // Cleanup navigation handler
+      CallKeepService.setNavigationHandler(null);
+    };
+  }, [navigation]);
+
+  useEffect(() => {
+    const configureNotifications = async () => {
+      await Notifications.setNotificationCategoryAsync('incoming_call', [
+        {
+          identifier: 'accept',
+          buttonTitle: 'Accept',
+          options: {
+            opensAppToForeground: true,
+          },
+        },
+        {
+          identifier: 'decline',
+          buttonTitle: 'Decline',
+          options: {
+            opensAppToForeground: false,
+            isDestructive: true,
+          },
+        },
+      ]);
+    };
+    configureNotifications();
+  }, []);
+
+  useEffect(() => {
+    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+      const actionId = response.actionIdentifier;
+
+      // Navigate to CallScreen if tapped or accepted
+      if (actionId === Notifications.DEFAULT_ACTION_IDENTIFIER || actionId === 'accept') {
+        navigation.navigate('CallScreen', { mode: 'incoming' });
+      }
+      // Decline action is handled automatically by isDestructive/opensAppToForeground: false
+    });
+
+    return () => {
+      responseListener.remove();
+    };
+  }, []);
 
   useEffect(() => {
     const keyboardWillShow = Keyboard.addListener(
@@ -55,6 +143,9 @@ export default function ChatScreen({ navigation, route }) {
       keyboardWillHide.remove();
     };
   }, []);
+
+
+
 
   useEffect(() => {
     if (isLoading) {
@@ -99,11 +190,41 @@ export default function ChatScreen({ navigation, route }) {
     loadChatHistory();
   }, []);
 
+  // Development-only: Poll for call commands from dev-call-tester.js
+  useEffect(() => {
+    if (!__DEV__) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const url = `${getDevServerURL()}/command`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.command === 'call') {
+          console.log('📞 Received CALL command from CLI');
+          await fetch(`${getDevServerURL()}/clear`, { method: 'POST' });
+
+          if (appState.current === 'active') {
+            setIncomingCall(true);
+          } else {
+            // Trigger Native Call UI
+            CallKeepService.displayIncomingCall('Ira');
+          }
+        }
+      } catch (error) {
+        // Log error occasionally to avoid spamming, or just once
+        // console.log('Dev server polling failed:', error.message);
+      }
+    }, 2000);
+
+    return () => clearInterval(pollInterval);
+  }, [navigation]);
+
   const loadChatHistory = async () => {
     try {
       const savedMessages = await AsyncStorage.getItem('chatHistory');
       const savedCount = await AsyncStorage.getItem('messageCount');
-      
+
       if (savedMessages) {
         setMessages(JSON.parse(savedMessages));
       } else {
@@ -116,7 +237,7 @@ export default function ChatScreen({ navigation, route }) {
         };
         setMessages([greeting]);
       }
-      
+
       if (savedCount) {
         setMessageCount(parseInt(savedCount, 10));
       }
@@ -149,6 +270,7 @@ export default function ChatScreen({ navigation, route }) {
       text: inputText.trim(),
       sender: 'user',
       timestamp: new Date().toISOString(),
+      status: 'sending', // sending, delivered, read
     };
 
     const updatedMessages = [...messages, userMessage];
@@ -163,6 +285,11 @@ export default function ChatScreen({ navigation, route }) {
         message: userMessage.text,
       });
 
+      // Mark as read (green checkmark) when message is successfully posted to AI
+      const messagesWithRead = updatedMessages.map(msg => 
+        msg.id === userMessage.id ? { ...msg, status: 'read' } : msg
+      );
+
       const iraMessage = {
         id: (Date.now() + 1).toString(),
         text: response.data.reply,
@@ -170,13 +297,13 @@ export default function ChatScreen({ navigation, route }) {
         timestamp: new Date().toISOString(),
       };
 
-      const finalMessages = [...updatedMessages, iraMessage];
+      const finalMessages = [...messagesWithRead, iraMessage];
       setMessages(finalMessages);
       await saveChatHistory(finalMessages, newCount);
     } catch (error) {
       console.error('Error sending message:', error);
       Alert.alert('Error', 'Failed to send message. Please try again.');
-      
+
       // Remove user message on error
       setMessages(messages);
       setMessageCount(messageCount);
@@ -189,7 +316,7 @@ export default function ChatScreen({ navigation, route }) {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
     const isAtBottom = contentOffset.y >= contentSize.height - layoutMeasurement.height - 250;
     const shouldShow = !isAtBottom;
-    
+
     if (shouldShow !== showScrollButton) {
       setShowScrollButton(shouldShow);
       Animated.spring(scrollButtonAnim, {
@@ -263,9 +390,20 @@ export default function ChatScreen({ navigation, route }) {
     );
   };
 
-  const renderMessage = ({ item, index }) => {
+  const formatTime = (timestamp) => {
+    const date = new Date(timestamp);
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const formattedHours = hours % 12 || 12;
+    const formattedMinutes = minutes < 10 ? `0${minutes}` : minutes;
+    return `${formattedHours}:${formattedMinutes} ${ampm}`;
+  };
+
+  const renderMessage = ({ item }) => {
     const isIra = item.sender === 'ira';
-    
+    const time = formatTime(item.timestamp);
+
     if (!messageAnimations[item.id]) {
       messageAnimations[item.id] = new Animated.Value(0);
       Animated.timing(messageAnimations[item.id], {
@@ -274,11 +412,28 @@ export default function ChatScreen({ navigation, route }) {
         useNativeDriver: true,
       }).start();
     }
-    
+
+    // Render status icon for user messages
+    const renderStatusIcon = () => {
+      if (isIra || !item.status) return null;
+      
+      const iconColor = item.status === 'read' ? '#4CAF50' : '#999999';
+      const iconName = item.status === 'read' ? 'checkmark-done' : 'checkmark';
+      
+      return (
+        <Ionicons 
+          name={iconName} 
+          size={16} 
+          color={iconColor} 
+          style={{ marginLeft: 4 }} 
+        />
+      );
+    };
+
     return (
-      <Animated.View 
+      <Animated.View
         style={[
-          styles.messageContainer, 
+          styles.messageContainer,
           isIra ? styles.iraMessageContainer : styles.userMessageContainer,
           {
             opacity: messageAnimations[item.id],
@@ -292,9 +447,22 @@ export default function ChatScreen({ navigation, route }) {
         ]}
       >
         <View style={[styles.messageBubble, isIra ? styles.iraBubble : styles.userBubble]}>
-          <Text style={[styles.messageText, isIra ? styles.iraText : styles.userText]}>
-            {item.text}
-          </Text>
+          <View style={styles.messageContent}>
+            <Text style={[styles.messageText, isIra ? styles.iraText : styles.userText]}>
+              {item.text}
+              {/* Invisible timestamp for spacing - WhatsApp trick */}
+              <Text style={styles.timestampSpacer}>
+                {'    '}{time}{!isIra && '    '}
+              </Text>
+            </Text>
+            {/* Actual visible timestamp positioned absolutely */}
+            <View style={styles.timestampContainer}>
+              <Text style={[styles.timestamp, isIra ? styles.iraTimestamp : styles.userTimestamp]}>
+                {time}
+              </Text>
+              {renderStatusIcon()}
+            </View>
+          </View>
         </View>
       </Animated.View>
     );
@@ -302,10 +470,20 @@ export default function ChatScreen({ navigation, route }) {
 
   return (
     <View style={styles.gradient}>
+      <IncomingCallOverlay
+        visible={incomingCall}
+        onAccept={() => {
+          setIncomingCall(false);
+          navigation.navigate('CallScreen', { mode: 'incoming', initialStatus: 'connected' });
+        }}
+        onDecline={() => {
+          setIncomingCall(false);
+        }}
+      />
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.headerWrapper}>
           <View style={styles.header}>
-            <Image 
+            <Image
               source={require('../../assets/ira-dp.avif')}
               style={styles.avatarImage}
             />
@@ -316,15 +494,18 @@ export default function ChatScreen({ navigation, route }) {
                 <Text style={styles.onlineText}>Online</Text>
               </View>
             </View>
-            
+
             <View style={styles.headerActions}>
               <TouchableOpacity style={styles.iconButton}>
                 <Ionicons name="search-outline" size={22} color="#FF9B8A" />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.iconButton}>
+              <TouchableOpacity
+                style={styles.iconButton}
+                onPress={() => navigation.navigate('CallScreen', { mode: 'outgoing' })}
+              >
                 <Ionicons name="call-outline" size={22} color="#FF9B8A" />
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.iconButton}
                 onPress={() => setShowMenu(!showMenu)}
               >
@@ -332,24 +513,55 @@ export default function ChatScreen({ navigation, route }) {
               </TouchableOpacity>
             </View>
           </View>
-          
+
           {showMenu && (
             <>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.menuOverlay}
                 activeOpacity={1}
                 onPress={() => setShowMenu(false)}
               />
               <View style={styles.menuDropdown}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.menuItem}
                   onPress={handleClearChat}
                 >
                   <Ionicons name="trash-outline" size={20} color="#000000" />
                   <Text style={styles.menuItemText}>Clear Chat</Text>
                 </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={() => {
+                    setShowMenu(false);
+                    Alert.alert('Incoming Call', 'Ira is calling you in 3 seconds...', [{ text: 'OK' }]);
+                    setTimeout(() => {
+                      setIncomingCall(true);
+                    }, 3000);
+                  }}
+                >
+                  <Ionicons name="call" size={20} color="#000000" />
+                  <Text style={styles.menuItemText}>Simulate Incoming Call</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  onPress={async () => {
+                    setShowMenu(false);
+                    Alert.alert(
+                      'Background Test',
+                      'Exit the app now! Native Call will arrive in 5 seconds.',
+                      [{ text: 'OK' }]
+                    );
+
+                    setTimeout(() => {
+                      CallKeepService.displayIncomingCall('Ira');
+                    }, 5000);
+                  }}
+                >
+                  <Ionicons name="notifications-outline" size={20} color="#000000" />
+                  <Text style={styles.menuItemText}>Test Background Call</Text>
+                </TouchableOpacity>
                 {!isGuest && (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.menuItem}
                     onPress={handleLogout}
                   >
@@ -362,74 +574,74 @@ export default function ChatScreen({ navigation, route }) {
           )}
         </View>
 
-      <View style={styles.chatContainer}>
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          renderItem={renderMessage}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.messagesList}
-          onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
-          onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-        />
+        <View style={styles.chatContainer}>
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={renderMessage}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.messagesList}
+            onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+            onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+          />
 
-        {isLoading && (
-          <View style={styles.loadingContainer}>
-            <View style={styles.typingIndicator}>
-              <Animated.View style={[styles.typingDot, { transform: [{ translateY: typingDot1 }] }]} />
-              <Animated.View style={[styles.typingDot, { transform: [{ translateY: typingDot2 }] }]} />
-              <Animated.View style={[styles.typingDot, { transform: [{ translateY: typingDot3 }] }]} />
+          {isLoading && (
+            <View style={styles.loadingContainer}>
+              <View style={styles.typingIndicator}>
+                <Animated.View style={[styles.typingDot, { transform: [{ translateY: typingDot1 }] }]} />
+                <Animated.View style={[styles.typingDot, { transform: [{ translateY: typingDot2 }] }]} />
+                <Animated.View style={[styles.typingDot, { transform: [{ translateY: typingDot3 }] }]} />
+              </View>
+              <Text style={styles.loadingText}>Ira is typing...</Text>
             </View>
-            <Text style={styles.loadingText}>Ira is typing...</Text>
-          </View>
-        )}
-
-        <View style={[styles.inputContainer, Platform.OS === 'ios' && { marginBottom: keyboardHeight }]}>
-          {showScrollButton && (
-            <Animated.View
-              style={[
-                styles.scrollToBottomButton,
-                {
-                  opacity: scrollButtonAnim,
-                  transform: [{
-                    scale: scrollButtonAnim,
-                  }],
-                }
-              ]}
-            >
-              <TouchableOpacity 
-                style={styles.scrollButtonInner}
-                onPress={scrollToBottom}
-              >
-                <Ionicons name="arrow-down" size={24} color="#FF9B8A" />
-              </TouchableOpacity>
-            </Animated.View>
           )}
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              placeholder="Type a message"
-              placeholderTextColor="#999999"
-              value={inputText}
-              onChangeText={setInputText}
-              multiline
-              maxLength={500}
-            />
-            <TouchableOpacity style={styles.attachButton}>
-              <Ionicons name="attach-outline" size={24} color="#FF9B8A" />
+
+          <View style={[styles.inputContainer, Platform.OS === 'ios' && { marginBottom: keyboardHeight }]}>
+            {showScrollButton && (
+              <Animated.View
+                style={[
+                  styles.scrollToBottomButton,
+                  {
+                    opacity: scrollButtonAnim,
+                    transform: [{
+                      scale: scrollButtonAnim,
+                    }],
+                  }
+                ]}
+              >
+                <TouchableOpacity
+                  style={styles.scrollButtonInner}
+                  onPress={scrollToBottom}
+                >
+                  <Ionicons name="arrow-down" size={24} color="#FF9B8A" />
+                </TouchableOpacity>
+              </Animated.View>
+            )}
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                placeholder="Type a message"
+                placeholderTextColor="#999999"
+                value={inputText}
+                onChangeText={setInputText}
+                multiline
+                maxLength={500}
+              />
+              <TouchableOpacity style={styles.attachButton}>
+                <Ionicons name="attach-outline" size={24} color="#FF9B8A" />
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity
+              style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
+              onPress={sendMessage}
+              disabled={!inputText.trim() || isLoading}
+            >
+              <Ionicons name="send" size={22} color="#FF9B8A" />
             </TouchableOpacity>
           </View>
-          <TouchableOpacity 
-            style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
-            onPress={sendMessage}
-            disabled={!inputText.trim() || isLoading}
-          >
-            <Ionicons name="send" size={22} color="#FF9B8A" />
-          </TouchableOpacity>
         </View>
-      </View>
       </SafeAreaView>
     </View>
   );
@@ -531,9 +743,9 @@ const styles = StyleSheet.create({
   },
   messageBubble: {
     maxWidth: '75%',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderRadius: 30,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
     shadowColor: '#000000',
     shadowOffset: {
       width: 0,
@@ -545,24 +757,51 @@ const styles = StyleSheet.create({
   },
   iraBubble: {
     backgroundColor: '#FFB4A8',
-    borderRadius: 30,
-    borderTopLeftRadius: 4,
+    borderRadius: 20,
+    borderBottomLeftRadius: 4,
   },
   userBubble: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 30,
-    borderTopRightRadius: 4,
-
+    borderRadius: 20,
+    borderBottomRightRadius: 4,
+  },
+  messageContent: {
+    position: 'relative',
   },
   messageText: {
     fontSize: 15,
-    lineHeight: 22,
+    lineHeight: 20,
   },
   iraText: {
     color: '#000000',
   },
   userText: {
     color: '#000000',
+  },
+  timestampSpacer: {
+    fontSize: 11,
+    lineHeight: 20,
+    color: 'transparent',
+    letterSpacing: 0.5,
+  },
+  timestampContainer: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: 4,
+    backgroundColor: 'transparent',
+  },
+  timestamp: {
+    fontSize: 11,
+    fontWeight: '400',
+  },
+  iraTimestamp: {
+    color: 'rgba(0, 0, 0, 0.45)',
+  },
+  userTimestamp: {
+    color: '#999999',
   },
   loadingContainer: {
     flexDirection: 'row',
