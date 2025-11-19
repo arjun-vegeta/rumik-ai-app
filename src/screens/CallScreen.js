@@ -222,6 +222,9 @@ export default function CallScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
+    gradient: {
+        flex: 1,
+    },
     container: {
         flex: 1,
         backgroundColor: '#F2F2F2',
