@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function MessageBubble({
@@ -9,7 +9,43 @@ export default function MessageBubble({
   onPress,
   onLongPress,
   onReplyPress,
+  isSelected = false,
 }) {
+  const scaleAnim = React.useRef(new Animated.Value(1)).current;
+  const shadowAnim = React.useRef(new Animated.Value(1)).current;
+  const bubbleRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (isSelected) {
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1.05,
+          tension: 100,
+          friction: 10,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shadowAnim, {
+          toValue: 24,
+          duration: 250,
+          useNativeDriver: false,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          tension: 100,
+          friction: 10,
+          useNativeDriver: true,
+        }),
+        Animated.timing(shadowAnim, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: false,
+        }),
+      ]).start();
+    }
+  }, [isSelected]);
   const renderStatusIcon = () => {
     if (isIra || !message.status) return null;
     
@@ -26,18 +62,41 @@ export default function MessageBubble({
     );
   };
 
+  const handlePress = () => {
+    if (bubbleRef.current) {
+      bubbleRef.current.measure((x, y, width, height, pageX, pageY) => {
+        onPress({ x: pageX, y: pageY, width, height });
+      });
+    }
+  };
+
+  const handleLongPress = () => {
+    if (bubbleRef.current) {
+      bubbleRef.current.measure((x, y, width, height, pageX, pageY) => {
+        onLongPress({ x: pageX, y: pageY, width, height });
+      });
+    }
+  };
+
   return (
-    <TouchableOpacity
-      style={[
-        styles.messageBubble, 
-        isIra ? styles.iraBubble : styles.userBubble,
-        message.replyTo && styles.messageBubbleWithReply
-      ]}
-      onPress={onPress}
-      onLongPress={onLongPress}
-      activeOpacity={0.9}
-      delayLongPress={300}
+    <Animated.View
+      style={{
+        transform: [{ scale: scaleAnim }],
+      }}
     >
+      <TouchableOpacity
+        ref={bubbleRef}
+        style={[
+          styles.messageBubble, 
+          isIra ? styles.iraBubble : styles.userBubble,
+          message.replyTo && styles.messageBubbleWithReply,
+          isSelected && styles.selectedBubble,
+        ]}
+        onPress={handlePress}
+        onLongPress={handleLongPress}
+        activeOpacity={0.9}
+        delayLongPress={300}
+      >
       {/* Reply preview */}
       {message.replyTo && (
         <TouchableOpacity 
@@ -73,7 +132,8 @@ export default function MessageBubble({
           {renderStatusIcon()}
         </View>
       </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -91,6 +151,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+  },
+  selectedBubble: {
+    shadowOffset: {
+      width: 0,
+      height: 12,
+    },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 24,
   },
   messageBubbleWithReply: {
     minWidth: 200,

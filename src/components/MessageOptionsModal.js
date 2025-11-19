@@ -8,10 +8,16 @@ import {
   Animated,
   TouchableWithoutFeedback,
   Dimensions,
+  Platform,
 } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const MODAL_WIDTH = 200;
+const MODAL_GAP = 8; // Gap between message and modal
+const SCREEN_MARGIN = 16; // Margin from screen edges
+const OPTION_HEIGHT = 52;
 
 export default function MessageOptionsModal({ 
   visible, 
@@ -22,62 +28,97 @@ export default function MessageOptionsModal({
   onDelete,
   isOwnMessage = false,
   messageLayout = null,
-  messageText = '',
 }) {
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
-  const slideAnim = React.useRef(new Animated.Value(-20)).current;
-  const messageOpacity = React.useRef(new Animated.Value(0)).current;
+  const blurOpacity = React.useRef(new Animated.Value(0)).current;
+  const modalScale = React.useRef(new Animated.Value(0.85)).current;
+  const modalOpacity = React.useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
     if (visible) {
       Animated.parallel([
-        Animated.timing(fadeAnim, {
+        Animated.timing(blurOpacity, {
           toValue: 1,
-          duration: 150,
+          duration: 250,
           useNativeDriver: true,
         }),
-        Animated.spring(slideAnim, {
-          toValue: 0,
+        Animated.spring(modalScale, {
+          toValue: 1,
           tension: 100,
-          friction: 10,
+          friction: 12,
           useNativeDriver: true,
         }),
-        Animated.timing(messageOpacity, {
+        Animated.timing(modalOpacity, {
           toValue: 1,
-          duration: 150,
+          duration: 250,
           useNativeDriver: true,
         }),
       ]).start();
     } else {
       Animated.parallel([
-        Animated.timing(fadeAnim, {
+        Animated.timing(blurOpacity, {
           toValue: 0,
-          duration: 100,
+          duration: 200,
           useNativeDriver: true,
         }),
-        Animated.timing(slideAnim, {
-          toValue: -20,
-          duration: 100,
+        Animated.timing(modalScale, {
+          toValue: 0.85,
+          duration: 200,
           useNativeDriver: true,
         }),
-        Animated.timing(messageOpacity, {
+        Animated.timing(modalOpacity, {
           toValue: 0,
-          duration: 100,
+          duration: 200,
           useNativeDriver: true,
         }),
       ]).start();
     }
   }, [visible]);
 
-  const handleOption = (callback) => {
+  const handleOption = React.useCallback((callback) => {
     onClose();
-    setTimeout(() => callback(), 150);
-  };
+    setTimeout(() => callback(), 250);
+  }, [onClose]);
 
   if (!messageLayout) return null;
 
   const isRightSide = messageLayout.x > SCREEN_WIDTH / 2;
-  const menuTop = messageLayout.y + messageLayout.height + 8;
+  
+  // Calculate number of options
+  const optionsCount = isOwnMessage ? 5 : 4;
+  const modalHeight = optionsCount * OPTION_HEIGHT;
+  
+  // Account for message scale animation (1.05x)
+  const SCALE_FACTOR = 1.05;
+  const scaleExpansion = (messageLayout.height * (SCALE_FACTOR - 1)) / 2;
+  
+  // Calculate if modal should be above or below message
+  const spaceBelow = SCREEN_HEIGHT - (messageLayout.y + messageLayout.height);
+  const spaceAbove = messageLayout.y;
+  const shouldShowAbove = spaceBelow < modalHeight + MODAL_GAP + SCREEN_MARGIN + scaleExpansion;
+  
+  // Calculate modal vertical position with consistent 8px gap
+  // When above: account for the scale expansion at the top of the message
+  // When below: account for the scale expansion at the bottom of the message
+  const modalTop = shouldShowAbove 
+    ? messageLayout.y - modalHeight - MODAL_GAP - scaleExpansion
+    : messageLayout.y + messageLayout.height + MODAL_GAP + scaleExpansion;
+  
+  // Calculate modal horizontal position
+  // Align modal to the same side as the message
+  let modalLeft;
+  if (isRightSide) {
+    // User message (right side) - align modal to right edge of message
+    modalLeft = Math.max(
+      SCREEN_MARGIN, 
+      messageLayout.x + messageLayout.width - MODAL_WIDTH
+    );
+  } else {
+    // Ira message (left side) - align modal to left edge of message
+    modalLeft = Math.min(
+      SCREEN_WIDTH - MODAL_WIDTH - SCREEN_MARGIN,
+      messageLayout.x
+    );
+  }
 
   return (
     <Modal
@@ -88,166 +129,163 @@ export default function MessageOptionsModal({
       statusBarTranslucent
     >
       <TouchableWithoutFeedback onPress={onClose}>
-        <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
-          {/* Highlighted message copy */}
-          <Animated.View
-            style={[
-              styles.highlightedMessage,
-              {
-                top: messageLayout.y,
-                left: messageLayout.x,
-                width: messageLayout.width,
-                opacity: messageOpacity,
-              },
-              isRightSide ? styles.highlightedMessageRight : styles.highlightedMessageLeft,
-            ]}
-          >
-            <Text style={[styles.highlightedText, isRightSide && styles.highlightedTextRight]}>
-              {messageText}
-            </Text>
-          </Animated.View>
-
+        <View style={styles.modalContainer}>
           {/* Options menu */}
           <TouchableWithoutFeedback>
             <Animated.View 
               style={[
                 styles.menuContainer,
                 {
-                  top: menuTop,
-                  [isRightSide ? 'right' : 'left']: 16,
-                  opacity: fadeAnim,
-                  transform: [{ translateY: slideAnim }],
+                  top: modalTop,
+                  left: modalLeft,
+                  opacity: modalOpacity,
+                  transform: [{ scale: modalScale }],
                 }
               ]}
             >
-              {/* Action buttons row */}
-              <View style={styles.actionsRow}>
-                <TouchableOpacity
-                  style={styles.actionIcon}
-                  onPress={() => handleOption(onReply)}
-                >
-                  <Ionicons name="arrow-undo-outline" size={20} color="#D17A6F" style={styles.iconThick} />
-                  <Text style={styles.actionLabel}>Reply</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.actionIcon}
-                  onPress={() => handleOption(() => onFeedback('up'))}
-                >
-                  <Text style={styles.emojiIcon}>👍</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.actionIcon}
-                  onPress={() => handleOption(() => onFeedback('down'))}
-                >
-                  <Text style={styles.emojiIcon}>👎</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.actionIcon}
-                  onPress={() => handleOption(onReport)}
-                >
-                  <Ionicons name="flag-outline" size={20} color="#666666" style={styles.iconThick} />
-                  <Text style={styles.actionLabel}>Report</Text>
-                </TouchableOpacity>
-
-                {isOwnMessage && (
+              <BlurView
+                intensity={Platform.OS === 'ios' ? 100 : 120}
+                tint="light"
+                style={styles.menuBlur}
+              >
+                <View style={styles.optionsList}>
+                  {/* Reply */}
                   <TouchableOpacity
-                    style={styles.actionIcon}
-                    onPress={() => handleOption(onDelete)}
+                    style={styles.optionItem}
+                    onPress={() => handleOption(onReply)}
+                    activeOpacity={0.6}
                   >
-                    <Ionicons name="trash-outline" size={20} color="#FF6B6B" style={styles.iconThick} />
-                    <Text style={[styles.actionLabel, styles.deleteLabel]}>Delete</Text>
+                    <View style={styles.optionIcon}>
+                      <Ionicons name="arrow-undo-outline" size={20} color="#D17A6F" />
+                    </View>
+                    <Text style={styles.optionText}>Reply</Text>
                   </TouchableOpacity>
-                )}
-              </View>
+
+                  <View style={styles.divider} />
+
+                  {/* Thumbs Up */}
+                  <TouchableOpacity
+                    style={styles.optionItem}
+                    onPress={() => handleOption(() => onFeedback('up'))}
+                    activeOpacity={0.6}
+                  >
+                    <View style={styles.optionIcon}>
+                      <Text style={styles.emojiIcon}>👍</Text>
+                    </View>
+                    <Text style={styles.optionText}>Like</Text>
+                  </TouchableOpacity>
+
+                  <View style={styles.divider} />
+
+                  {/* Thumbs Down */}
+                  <TouchableOpacity
+                    style={styles.optionItem}
+                    onPress={() => handleOption(() => onFeedback('down'))}
+                    activeOpacity={0.6}
+                  >
+                    <View style={styles.optionIcon}>
+                      <Text style={styles.emojiIcon}>👎</Text>
+                    </View>
+                    <Text style={styles.optionText}>Dislike</Text>
+                  </TouchableOpacity>
+
+                  <View style={styles.divider} />
+
+                  {/* Report */}
+                  <TouchableOpacity
+                    style={styles.optionItem}
+                    onPress={() => handleOption(onReport)}
+                    activeOpacity={0.6}
+                  >
+                    <View style={styles.optionIcon}>
+                      <Ionicons name="flag-outline" size={20} color="#666666" />
+                    </View>
+                    <Text style={styles.optionText}>Report</Text>
+                  </TouchableOpacity>
+
+                  {/* Delete (only for own messages) */}
+                  {isOwnMessage && (
+                    <>
+                      <View style={styles.divider} />
+                      <TouchableOpacity
+                        style={styles.optionItem}
+                        onPress={() => handleOption(onDelete)}
+                        activeOpacity={0.6}
+                      >
+                        <View style={styles.optionIcon}>
+                          <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
+                        </View>
+                        <Text style={[styles.optionText, styles.deleteText]}>Delete</Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+                </View>
+              </BlurView>
             </Animated.View>
           </TouchableWithoutFeedback>
-        </Animated.View>
+        </View>
       </TouchableWithoutFeedback>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-  },
-  highlightedMessage: {
-    position: 'absolute',
-    backgroundColor: '#FFB4A8',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    shadowColor: '#000000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 10,
-  },
-  highlightedMessageLeft: {
-    borderBottomLeftRadius: 4,
-  },
-  highlightedMessageRight: {
-    borderBottomRightRadius: 4,
-    backgroundColor: '#FFFFFF',
-  },
-  highlightedText: {
-    fontSize: 15,
-    color: '#000000',
-    lineHeight: 20,
-  },
-  highlightedTextRight: {
-    color: '#000000',
   },
   menuContainer: {
     position: 'absolute',
-    backgroundColor: '#FFFFFF',
+    width: MODAL_WIDTH,
     borderRadius: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
+    overflow: 'hidden',
     shadowColor: '#000000',
     shadowOffset: {
       width: 0,
-      height: 4,
+      height: 12,
     },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 10,
-    minWidth: 60,
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 24,
   },
-  actionsRow: {
+  menuBlur: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  optionsList: {
+    paddingVertical: 4,
+  },
+  optionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    height: OPTION_HEIGHT,
   },
-  actionIcon: {
-    alignItems: 'center',
+  optionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    minWidth: 56,
+    alignItems: 'center',
+    marginRight: 12,
   },
-  actionLabel: {
-    fontSize: 11,
-    color: '#666666',
-    marginTop: 4,
+  optionText: {
+    fontSize: 16,
+    color: '#000000',
     fontWeight: '500',
+    flex: 1,
   },
-  deleteLabel: {
+  deleteText: {
     color: '#FF6B6B',
   },
-  emojiIcon: {
-    fontSize: 24,
+  divider: {
+    height: 0.5,
+    backgroundColor: 'rgba(0, 0, 0, 0.08)',
+    marginHorizontal: 16,
   },
-  iconThick: {
-    textShadowColor: 'rgba(0, 0, 0, 0.15)',
-    textShadowOffset: { width: 0.5, height: 0.5 },
-    textShadowRadius: 0.5,
+  emojiIcon: {
+    fontSize: 18,
   },
 });

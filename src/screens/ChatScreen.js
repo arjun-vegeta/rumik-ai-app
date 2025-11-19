@@ -295,21 +295,19 @@ export default function ChatScreen({ navigation, route }) {
     }
   };
 
-  const handleMessageLongPress = (message, event) => {
-    event.target.measure((x, y, width, height, pageX, pageY) => {
-      setMessageLayout({ x: pageX, y: pageY, width, height });
-      setSelectedMessage(message);
-      setShowMessageOptions(true);
-    });
+  const handleMessageLongPress = (message, layout) => {
+    setMessageLayout(layout);
+    setSelectedMessage(message);
+    setShowMessageOptions(true);
   };
 
-  const handleMessagePress = (message, event) => {
+  const handleMessagePress = (message, layout) => {
     const now = Date.now();
     const DOUBLE_PRESS_DELAY = 300;
     
     if (lastTap.current && (now - lastTap.current) < DOUBLE_PRESS_DELAY) {
       lastTap.current = null;
-      handleMessageLongPress(message, event);
+      handleMessageLongPress(message, layout);
     } else {
       lastTap.current = now;
     }
@@ -356,6 +354,7 @@ export default function ChatScreen({ navigation, route }) {
     const isIra = item.sender === 'ira';
     const time = formatTime(item.timestamp);
     const animation = getMessageAnimation(item.id);
+    const isSelected = selectedMessage?.id === item.id;
 
     return (
       <SwipeableMessage
@@ -377,6 +376,8 @@ export default function ChatScreen({ navigation, route }) {
                   outputRange: [20, 0],
                 }),
               }],
+              zIndex: isSelected ? 1000 : 1,
+              elevation: isSelected ? 1000 : 1,
             }
           ]}
         >
@@ -384,9 +385,10 @@ export default function ChatScreen({ navigation, route }) {
             message={item}
             isIra={isIra}
             time={time}
-            onPress={(e) => handleMessagePress(item, e)}
-            onLongPress={(e) => handleMessageLongPress(item, e)}
+            onPress={(layout) => handleMessagePress(item, layout)}
+            onLongPress={(layout) => handleMessageLongPress(item, layout)}
             onReplyPress={() => item.replyTo && scrollToMessage(item.replyTo.id)}
+            isSelected={isSelected}
           />
         </Animated.View>
       </SwipeableMessage>
@@ -533,7 +535,6 @@ export default function ChatScreen({ navigation, route }) {
         onDelete={() => selectedMessage && handleMessageDelete(selectedMessage.id)}
         isOwnMessage={selectedMessage?.sender === 'user'}
         messageLayout={messageLayout}
-        messageText={selectedMessage?.text || ''}
       />
     </View>
   );
