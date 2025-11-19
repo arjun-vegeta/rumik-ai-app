@@ -21,6 +21,7 @@ import * as Notifications from 'expo-notifications';
 import { getDevServerURL } from '../utils/devServer';
 import IncomingCallOverlay from '../components/IncomingCallOverlay';
 import CallKeepService from '../utils/callKeep';
+import SwipeableMessage from '../components/SwipeableMessage';
 
 // Configure notifications
 Notifications.setNotificationHandler({
@@ -41,14 +42,20 @@ export default function ChatScreen({ navigation, route }) {
   const [showMenu, setShowMenu] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [incomingCall, setIncomingCall] = useState(false);
+  const [replyingTo, setReplyingTo] = useState(null);
 
   const appState = useRef(AppState.currentState);
   const flatListRef = useRef(null);
+  const inputRef = useRef(null);
   const scrollButtonAnim = useRef(new Animated.Value(0)).current;
   const messageAnimations = useRef({}).current;
   const typingDot1 = useRef(new Animated.Value(0)).current;
   const typingDot2 = useRef(new Animated.Value(0)).current;
   const typingDot3 = useRef(new Animated.Value(0)).current;
+  const inputWidthAnim = useRef(new Animated.Value(1)).current;
+  const rightPillWidthAnim = useRef(new Animated.Value(1)).current;
+  const actionsOpacityAnim = useRef(new Animated.Value(1)).current;
+  const sendButtonScaleAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const getPermissions = async () => {
@@ -190,6 +197,37 @@ export default function ChatScreen({ navigation, route }) {
     loadChatHistory();
   }, []);
 
+  // Animate input box when text is typed
+  useEffect(() => {
+    const hasText = inputText.trim().length > 0;
+    
+    Animated.parallel([
+      Animated.spring(inputWidthAnim, {
+        toValue: hasText ? 1.15 : 1,
+        useNativeDriver: false,
+        tension: 80,
+        friction: 10,
+      }),
+      Animated.spring(rightPillWidthAnim, {
+        toValue: hasText ? 0.7 : 1,
+        useNativeDriver: false,
+        tension: 80,
+        friction: 10,
+      }),
+      Animated.timing(actionsOpacityAnim, {
+        toValue: hasText ? 0 : 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+      Animated.spring(sendButtonScaleAnim, {
+        toValue: hasText ? 1 : 0,
+        useNativeDriver: true,
+        tension: 80,
+        friction: 8,
+      }),
+    ]).start();
+  }, [inputText]);
+
   // Development-only: Poll for call commands from dev-call-tester.js
   useEffect(() => {
     if (!__DEV__) return;
@@ -271,11 +309,17 @@ export default function ChatScreen({ navigation, route }) {
       sender: 'user',
       timestamp: new Date().toISOString(),
       status: 'sending', // sending, delivered, read
+      replyTo: replyingTo ? {
+        id: replyingTo.id,
+        text: replyingTo.text,
+        sender: replyingTo.sender,
+      } : null,
     };
 
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
     setInputText('');
+    setReplyingTo(null);
     setIsLoading(true);
 
     setMessageCount(newCount);
@@ -400,6 +444,55 @@ export default function ChatScreen({ navigation, route }) {
     return `${formattedHours}:${formattedMinutes} ${ampm}`;
   };
 
+  const handleReply = (message) => {
+    setReplyingTo(message);
+    // Auto-focus input after a short delay for smooth animation
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
+  };
+
+  const cancelReply = () => {
+    setReplyingTo(null);
+  };
+
+  const scrollToMessage = (messageId) => {
+    const index = messages.findIndex(msg => msg.id === messageId);
+    if (index !== -1) {
+      flatListRef.current?.scrollToIndex({
+        index,
+        animated: true,
+        viewPosition: 0.5, // Center the message on screen
+      });
+      
+      // Add a highlight animation
+      if (messageAnimations[messageId]) {
+        Animated.sequence([
+          Animated.timing(messageAnimations[messageId], {
+            toValue: 0.7,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+          Animated.timing(messageAnimations[messageId], {
+            toValue: 1,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+          Animated.timing(messageAnimations[messageId], {
+            toValue: 0.7,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+          Animated.timing(messageAnimations[messageId], {
+            toValue: 1,
+            duration: 150,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }
+    }
+  };
+
   const renderMessage = ({ item }) => {
     const isIra = item.sender === 'ira';
     const time = formatTime(item.timestamp);
@@ -431,40 +524,68 @@ export default function ChatScreen({ navigation, route }) {
     };
 
     return (
-      <Animated.View
-        style={[
-          styles.messageContainer,
-          isIra ? styles.iraMessageContainer : styles.userMessageContainer,
-          {
-            opacity: messageAnimations[item.id],
-            transform: [{
-              translateY: messageAnimations[item.id].interpolate({
-                inputRange: [0, 1],
-                outputRange: [20, 0],
-              }),
-            }],
-          }
-        ]}
+      <SwipeableMessage
+        isIra={isIra}
+        onReply={() => handleReply(item)}
       >
-        <View style={[styles.messageBubble, isIra ? styles.iraBubble : styles.userBubble]}>
-          <View style={styles.messageContent}>
-            <Text style={[styles.messageText, isIra ? styles.iraText : styles.userText]}>
-              {item.text}
-              {/* Invisible timestamp for spacing - WhatsApp trick */}
-              <Text style={styles.timestampSpacer}>
-                {'    '}{time}{!isIra && '    '}
+        <Animated.View
+          style={[
+            styles.messageContainer,
+            isIra ? styles.iraMessageContainer : styles.userMessageContainer,
+            {
+              opacity: messageAnimations[item.id],
+              transform: [{
+                translateY: messageAnimations[item.id].interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [20, 0],
+                }),
+              }],
+            }
+          ]}
+        >
+          <View style={[
+            styles.messageBubble, 
+            isIra ? styles.iraBubble : styles.userBubble,
+            item.replyTo && styles.messageBubbleWithReply
+          ]}>
+            {/* Reply preview */}
+            {item.replyTo && (
+              <TouchableOpacity 
+                style={styles.replyPreview}
+                onPress={() => scrollToMessage(item.replyTo.id)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.replyBorder, isIra ? styles.replyBorderIra : styles.replyBorderUser]} />
+                <View style={styles.replyContent}>
+                  <Text style={styles.replyName}>
+                    {item.replyTo.sender === 'ira' ? 'Ira' : 'You'}
+                  </Text>
+                  <Text style={styles.replyText} numberOfLines={1}>
+                    {item.replyTo.text}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
+            
+            <View style={styles.messageContent}>
+              <Text style={[styles.messageText, isIra ? styles.iraText : styles.userText]}>
+                {item.text}
+                {/* Invisible timestamp for spacing - WhatsApp trick */}
+                <Text style={styles.timestampSpacer}>
+                  {'    '}{time}{!isIra && '    '}
+                </Text>
               </Text>
-            </Text>
-            {/* Actual visible timestamp positioned absolutely */}
-            <View style={styles.timestampContainer}>
-              <Text style={[styles.timestamp, isIra ? styles.iraTimestamp : styles.userTimestamp]}>
-                {time}
-              </Text>
-              {renderStatusIcon()}
+              {/* Actual visible timestamp positioned absolutely */}
+              <View style={styles.timestampContainer}>
+                <Text style={[styles.timestamp, isIra ? styles.iraTimestamp : styles.userTimestamp]}>
+                  {time}
+                </Text>
+                {renderStatusIcon()}
+              </View>
             </View>
           </View>
-        </View>
-      </Animated.View>
+        </Animated.View>
+      </SwipeableMessage>
     );
   };
 
@@ -496,20 +617,20 @@ export default function ChatScreen({ navigation, route }) {
             </View>
 
             <View style={styles.headerActions}>
-              <TouchableOpacity style={styles.iconButton}>
-                <Ionicons name="search-outline" size={22} color="#FF9B8A" />
+              <TouchableOpacity style={styles.headerIconButton}>
+                <Ionicons name="search-outline" size={24} color="#D17A6F" style={styles.iconThick} />
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.iconButton}
+                style={styles.headerIconButton}
                 onPress={() => navigation.navigate('CallScreen', { mode: 'outgoing' })}
               >
-                <Ionicons name="call-outline" size={22} color="#FF9B8A" />
+                <Ionicons name="call-outline" size={24} color="#D17A6F" style={styles.iconThick} />
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.iconButton}
+                style={styles.headerIconButton}
                 onPress={() => setShowMenu(!showMenu)}
               >
-                <Ionicons name="ellipsis-vertical" size={22} color="#FF9B8A" />
+                <Ionicons name="ellipsis-vertical" size={24} color="#D17A6F" style={styles.iconThick} />
               </TouchableOpacity>
             </View>
           </View>
@@ -526,7 +647,7 @@ export default function ChatScreen({ navigation, route }) {
                   style={styles.menuItem}
                   onPress={handleClearChat}
                 >
-                  <Ionicons name="trash-outline" size={20} color="#000000" />
+                  <Ionicons name="trash-outline" size={20} color="#000000" style={styles.iconThick} />
                   <Text style={styles.menuItemText}>Clear Chat</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -539,7 +660,7 @@ export default function ChatScreen({ navigation, route }) {
                     }, 3000);
                   }}
                 >
-                  <Ionicons name="call" size={20} color="#000000" />
+                  <Ionicons name="call-outline" size={20} color="#000000" style={styles.iconThick} />
                   <Text style={styles.menuItemText}>Simulate Incoming Call</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -557,7 +678,7 @@ export default function ChatScreen({ navigation, route }) {
                     }, 5000);
                   }}
                 >
-                  <Ionicons name="notifications-outline" size={20} color="#000000" />
+                  <Ionicons name="notifications-outline" size={20} color="#000000" style={styles.iconThick} />
                   <Text style={styles.menuItemText}>Test Background Call</Text>
                 </TouchableOpacity>
                 {!isGuest && (
@@ -565,7 +686,7 @@ export default function ChatScreen({ navigation, route }) {
                     style={styles.menuItem}
                     onPress={handleLogout}
                   >
-                    <Ionicons name="log-out-outline" size={20} color="#000000" />
+                    <Ionicons name="log-out-outline" size={20} color="#000000" style={styles.iconThick} />
                     <Text style={styles.menuItemText}>Logout</Text>
                   </TouchableOpacity>
                 )}
@@ -585,6 +706,20 @@ export default function ChatScreen({ navigation, route }) {
             onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
             onScroll={handleScroll}
             scrollEventThrottle={16}
+            keyboardShouldPersistTaps="always"
+            keyboardDismissMode="none"
+            removeClippedSubviews={false}
+            onScrollToIndexFailed={(info) => {
+              // Fallback: scroll to offset if index fails
+              const wait = new Promise(resolve => setTimeout(resolve, 100));
+              wait.then(() => {
+                flatListRef.current?.scrollToIndex({
+                  index: info.index,
+                  animated: true,
+                  viewPosition: 0.5,
+                });
+              });
+            }}
           />
 
           {isLoading && (
@@ -619,27 +754,108 @@ export default function ChatScreen({ navigation, route }) {
                 </TouchableOpacity>
               </Animated.View>
             )}
-            <View style={styles.inputWrapper}>
+            
+            {/* Reply bar */}
+            {replyingTo && (
+              <View style={styles.replyBar}>
+                <View style={styles.replyBarContent}>
+                  <View style={styles.replyBarBorder} />
+                  <View style={styles.replyBarText}>
+                    <Text style={styles.replyBarName}>
+                      {replyingTo.sender === 'ira' ? 'Ira' : 'You'}
+                    </Text>
+                    <Text style={styles.replyBarMessage} numberOfLines={1}>
+                      {replyingTo.text}
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity onPress={cancelReply} style={styles.replyBarClose}>
+                  <Ionicons name="close" size={22} color="#666666" />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <Animated.View 
+              style={[
+                styles.inputWrapper,
+                {
+                  flex: inputWidthAnim,
+                }
+              ]}
+            >
+              <TouchableOpacity style={styles.iconButtonInput}>
+                <Ionicons name="happy-outline" size={24} color="#D17A6F" style={styles.iconThick} />
+              </TouchableOpacity>
+              
               <TextInput
+                ref={inputRef}
                 style={styles.input}
-                placeholder="Type a message"
+                placeholder="Message"
                 placeholderTextColor="#999999"
                 value={inputText}
                 onChangeText={setInputText}
                 multiline
                 maxLength={500}
               />
-              <TouchableOpacity style={styles.attachButton}>
-                <Ionicons name="attach-outline" size={24} color="#FF9B8A" />
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity
-              style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
-              onPress={sendMessage}
-              disabled={!inputText.trim() || isLoading}
+            </Animated.View>
+
+            <Animated.View 
+              style={[
+                styles.rightPill,
+                {
+                  width: rightPillWidthAnim.interpolate({
+                    inputRange: [0.7, 1],
+                    outputRange: [56, 120],
+                  }),
+                }
+              ]}
             >
-              <Ionicons name="send" size={22} color="#FF9B8A" />
-            </TouchableOpacity>
+              {/* Action buttons (clip, camera, mic) - visible when no text */}
+              <Animated.View 
+                style={[
+                  styles.actionsContainer,
+                  {
+                    opacity: actionsOpacityAnim,
+                    transform: [{
+                      scale: actionsOpacityAnim,
+                    }],
+                  }
+                ]}
+                pointerEvents={inputText.trim() ? 'none' : 'auto'}
+              >
+                <TouchableOpacity style={styles.actionButton}>
+                  <Ionicons name="attach-outline" size={24} color="#D17A6F" style={styles.iconThick} />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionButton}>
+                  <Ionicons name="camera-outline" size={24} color="#D17A6F" style={styles.iconThick} />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.actionButton}>
+                  <Ionicons name="mic-outline" size={24} color="#D17A6F" style={styles.iconThick} />
+                </TouchableOpacity>
+              </Animated.View>
+
+              {/* Send button - visible when text is typed */}
+              <Animated.View 
+                style={[
+                  styles.sendButtonContainer,
+                  {
+                    opacity: sendButtonScaleAnim,
+                    transform: [{
+                      scale: sendButtonScaleAnim,
+                    }],
+                  }
+                ]}
+                pointerEvents={!inputText.trim() ? 'none' : 'auto'}
+              >
+                <TouchableOpacity
+                  style={styles.sendButton}
+                  onPress={sendMessage}
+                  disabled={!inputText.trim() || isLoading}
+                >
+                  <Ionicons name="send" size={22} color="#D17A6F" />
+                </TouchableOpacity>
+              </Animated.View>
+            </Animated.View>
           </View>
         </View>
       </SafeAreaView>
@@ -667,15 +883,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
     borderRadius: 30,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     shadowColor: '#000000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
     elevation: 2,
   },
   avatarImage: {
@@ -712,17 +928,13 @@ const styles = StyleSheet.create({
   },
   headerActions: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 2,
   },
-  iconButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: 'transparent',
+  headerIconButton: {
+    width: 36,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: '#FF9B8A',
   },
   chatContainer: {
     flex: 1,
@@ -754,6 +966,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
+  },
+  messageBubbleWithReply: {
+    minWidth: 200,
   },
   iraBubble: {
     backgroundColor: '#FFB4A8',
@@ -828,29 +1043,29 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    alignItems: 'flex-end',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     backgroundColor: 'transparent',
     borderTopWidth: 0,
     position: 'relative',
-    gap: 12,
+    gap: 8,
   },
   inputWrapper: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 30,
-    paddingHorizontal: 20,
-    minHeight: 56,
+    borderRadius: 28,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    minHeight: 48,
     shadowColor: '#000000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
     elevation: 2,
   },
   input: {
@@ -858,30 +1073,61 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#000000',
     maxHeight: 100,
-    paddingVertical: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
   },
-  attachButton: {
-    padding: 2,
-    marginLeft: 8,
-  },
-  sendButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#ffffffff',
+  iconButtonInput: {
+    width: 36,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  rightPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    height: 48,
+    paddingHorizontal: 4,
     shadowColor: '#000000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.06,
+    shadowRadius: 3,
+    elevation: 2,
+    overflow: 'hidden',
+    position: 'relative',
   },
-  sendButtonDisabled: {
-    opacity: 0.4,
+  actionsContainer: {
+    position: 'absolute',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  actionButton: {
+    width: 36,
+    height: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sendButtonContainer: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sendButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scrollToBottomButton: {
     position: 'absolute',
@@ -917,22 +1163,20 @@ const styles = StyleSheet.create({
   },
   menuDropdown: {
     position: 'absolute',
-    top: 60,
+    top: 70,
     right: 16,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: '#FF9B8A',
     shadowColor: '#000000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 10,
     zIndex: 200,
-    minWidth: 160,
+    minWidth: 200,
   },
   menuItem: {
     flexDirection: 'row',
@@ -944,5 +1188,93 @@ const styles = StyleSheet.create({
   menuItemText: {
     fontSize: 16,
     color: '#000000',
+  },
+  replyBar: {
+    position: 'absolute',
+    bottom: 72,
+    left: 12,
+    right: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  replyBarContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  replyBarBorder: {
+    width: 3,
+    height: '100%',
+    backgroundColor: '#FF9B8A',
+    borderRadius: 2,
+    marginRight: 8,
+  },
+  replyBarText: {
+    flex: 1,
+  },
+  replyBarName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FF9B8A',
+    marginBottom: 2,
+  },
+  replyBarMessage: {
+    fontSize: 14,
+    color: '#666666',
+  },
+  replyBarClose: {
+    padding: 4,
+    marginLeft: 8,
+  },
+  replyPreview: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 6,
+    minHeight: 44,
+  },
+  replyBorder: {
+    width: 3,
+    borderRadius: 2,
+    marginRight: 8,
+  },
+  replyBorderIra: {
+    backgroundColor: '#FFFFFF',
+  },
+  replyBorderUser: {
+    backgroundColor: '#FF9B8A',
+  },
+  replyContent: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  replyName: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 2,
+    color: '#FF9B8A',
+  },
+  replyText: {
+    fontSize: 13,
+    lineHeight: 18,
+    color: 'rgba(0, 0, 0, 0.6)',
+  },
+  iconThick: {
+    textShadowColor: 'rgba(0, 0, 0, 0.15)',
+    textShadowOffset: { width: 0.3, height: 0.3 },
+    textShadowRadius: 0.2,
   },
 });
