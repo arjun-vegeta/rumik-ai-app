@@ -8,43 +8,43 @@ const { width } = Dimensions.get('window');
 
 export default function IncomingCallOverlay({ visible, onAccept, onDecline, callerName = "Ira" }) {
     const insets = useSafeAreaInsets();
-    const slideAnim = useRef(new Animated.Value(-200)).current;
-    const scaleAnim = useRef(new Animated.Value(0.9)).current;
+    const slideAnim = useRef(new Animated.Value(-150)).current;
+    const opacityAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
         if (visible) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-            // Parallel animation for slide and scale
+            // Slide in from top
             Animated.parallel([
                 Animated.spring(slideAnim, {
-                    toValue: insets.top + 10, // Position just below status bar/notch
+                    toValue: 0,
                     useNativeDriver: true,
-                    tension: 60,
-                    friction: 9,
+                    tension: 80,
+                    friction: 10,
                 }),
-                Animated.spring(scaleAnim, {
+                Animated.timing(opacityAnim, {
                     toValue: 1,
+                    duration: 300,
                     useNativeDriver: true,
-                    tension: 70,
-                    friction: 8,
                 })
             ]).start();
         } else {
+            // Slide out to top
             Animated.parallel([
                 Animated.timing(slideAnim, {
-                    toValue: -200,
-                    duration: 250,
+                    toValue: -150,
+                    duration: 300,
                     useNativeDriver: true,
                 }),
-                Animated.timing(scaleAnim, {
-                    toValue: 0.9,
-                    duration: 250,
+                Animated.timing(opacityAnim, {
+                    toValue: 0,
+                    duration: 300,
                     useNativeDriver: true,
                 })
             ]).start();
         }
-    }, [visible, insets.top]);
+    }, [visible]);
 
     if (!visible) return null;
 
@@ -53,10 +53,9 @@ export default function IncomingCallOverlay({ visible, onAccept, onDecline, call
             style={[
                 styles.container,
                 {
-                    transform: [
-                        { translateY: slideAnim },
-                        { scale: scaleAnim }
-                    ]
+                    top: insets.top,
+                    opacity: opacityAnim,
+                    transform: [{ translateY: slideAnim }]
                 }
             ]}
         >
@@ -104,25 +103,24 @@ export default function IncomingCallOverlay({ visible, onAccept, onDecline, call
 const styles = StyleSheet.create({
     container: {
         position: 'absolute',
-        top: 0,
-        left: 10,
-        right: 10,
+        left: 16,
+        right: 16,
         zIndex: 2000,
-        alignItems: 'center',
+        paddingTop: 0,
+        paddingBottom: 8,
     },
     islandContainer: {
         width: '100%',
-        backgroundColor: '#FFF', // White background
-        borderRadius: 35, // Pill shape
-        paddingVertical: 12,
-        paddingHorizontal: 16,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.15, // Softer shadow
-        shadowRadius: 16,
-        elevation: 12,
-        borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.05)', // Subtle border
+        backgroundColor: '#FFFFFF',
+        borderRadius: 30,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        minHeight: 66, // Ensure same height as header (50px avatar + 16px padding)
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 3,
+        elevation: 2,
     },
     content: {
         flexDirection: 'row',
@@ -134,13 +132,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 12,
         flex: 1,
+        marginLeft: 0,
     },
     avatar: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        borderWidth: 1.5,
-        borderColor: '#FFE8E3', // App theme color
+        width: 50,
+        height: 50,
+        borderRadius: 25,
+        borderWidth: 0,
     },
     textContainer: {
         justifyContent: 'center',
@@ -159,7 +157,7 @@ const styles = StyleSheet.create({
     },
     actions: {
         flexDirection: 'row',
-        gap: 12,
+        gap: 8,
     },
     button: {
         width: 44,

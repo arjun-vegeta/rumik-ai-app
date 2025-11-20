@@ -23,7 +23,8 @@
             "selfManaged": true
           }
         }
-      ]
+      ],
+      "expo-audio"
     ],
     "ios": {
       "supportsTablet": true,

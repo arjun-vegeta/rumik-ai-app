@@ -1,6 +1,6 @@
 import { Platform, NativeModules } from 'react-native';
 import uuid from 'react-native-uuid';
-import { Audio } from 'expo-av';
+import { setAudioModeAsync, AndroidAudioEncoder, AndroidOutputFormat, IOSAudioQuality, IOSOutputFormat } from 'expo-audio';
 
 let RNCallKeep;
 
@@ -74,12 +74,9 @@ class CallKeepService {
 
             // Configure audio session for VoIP
             if (Platform.OS === 'ios') {
-                await Audio.setAudioModeAsync({
+                await setAudioModeAsync({
                     allowsRecordingIOS: true,
                     playsInSilentModeIOS: true,
-                    staysActiveInBackground: true,
-                    shouldDuckAndroid: true,
-                    playThroughEarpieceAndroid: false,
                 });
             }
 
