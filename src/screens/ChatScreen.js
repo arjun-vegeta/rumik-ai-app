@@ -26,6 +26,7 @@ import ReplyBar from '../components/chat/ReplyBar';
 import MessageBubble from '../components/chat/MessageBubble';
 import SwipeableMessage from '../components/SwipeableMessage';
 import IncomingCallOverlay from '../components/IncomingCallOverlay';
+import OngoingCallOverlay from '../components/OngoingCallOverlay';
 import MessageOptionsModal from '../components/MessageOptionsModal';
 import FeedbackModal from '../components/FeedbackModal';
 
@@ -65,6 +66,8 @@ export default function ChatScreen({ navigation, route }) {
   const [showFeedback, setShowFeedback] = useState(false);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [incomingCall, setIncomingCall] = useState(false);
+  const [ongoingCall, setOngoingCall] = useState(false);
+  const [callDuration, setCallDuration] = useState(0);
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [showMessageOptions, setShowMessageOptions] = useState(false);
   const [messageLayout, setMessageLayout] = useState(null);
@@ -307,6 +310,8 @@ export default function ChatScreen({ navigation, route }) {
   };
 
   const handleMessageLongPress = (message, layout) => {
+    // Smoothly dismiss keyboard when opening modal
+    Keyboard.dismiss();
     setMessageLayout(layout);
     setSelectedMessage(message);
     setShowMessageOptions(true);
@@ -465,15 +470,64 @@ export default function ChatScreen({ navigation, route }) {
     );
   };
 
+  // Handle ongoing call timer
+  useEffect(() => {
+    let timer;
+    if (ongoingCall) {
+      timer = setInterval(() => {
+        setCallDuration(prev => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [ongoingCall]);
+
+  // Listen for navigation params to show ongoing call
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      const params = route.params;
+      if (params?.showOngoingCall) {
+        setOngoingCall(true);
+        setCallDuration(params.callDuration || 0);
+        // Clear the param
+        navigation.setParams({ showOngoingCall: undefined, callDuration: undefined });
+      }
+    });
+    return unsubscribe;
+  }, [navigation, route.params]);
+
   return (
     <View style={styles.gradient}>
       <IncomingCallOverlay
         visible={incomingCall}
         onAccept={() => {
           setIncomingCall(false);
-          navigation.navigate('CallScreen', { mode: 'incoming', initialStatus: 'connected' });
+          setTimeout(() => {
+            navigation.navigate('CallScreen', { mode: 'incoming', initialStatus: 'connected' });
+          }, 350);
         }}
         onDecline={() => setIncomingCall(false)}
+        onPress={() => {
+          setIncomingCall(false);
+          setTimeout(() => {
+            navigation.navigate('CallScreen', { mode: 'incoming', initialStatus: 'incoming' });
+          }, 350);
+        }}
+      />
+
+      <OngoingCallOverlay
+        visible={ongoingCall}
+        callDuration={callDuration}
+        onPress={() => {
+          setOngoingCall(false);
+          setTimeout(() => {
+            navigation.navigate('CallScreen', { 
+              mode: 'incoming', 
+              initialStatus: 'connected',
+              resumeCall: true,
+              callDuration: callDuration
+            });
+          }, 350);
+        }}
       />
       
       <SafeAreaView style={styles.container} edges={['top']}>
@@ -604,19 +658,35 @@ export default function ChatScreen({ navigation, route }) {
           setShowMessageOptions(false);
           setSelectedMessage(null);
           setMessageLayout(null);
+          // Smoothly restore keyboard after modal closes
+          setTimeout(() => {
+            inputRef.current?.focus();
+          }, 0);
         }}
         onReply={() => {
           if (selectedMessage) {
             handleReply(selectedMessage);
-            setTimeout(() => inputRef.current?.focus(), 100);
+            setTimeout(() => inputRef.current?.focus(), 300);
           }
         }}
-        onReport={() => Alert.alert('Report Message', 'This message has been reported.')}
+        onReport={() => {
+          Alert.alert('Report Message', 'This message has been reported.');
+          // Restore keyboard after alert
+          setTimeout(() => inputRef.current?.focus(), 300);
+        }}
         onFeedback={(type) => {
           const emoji = type === 'up' ? '👍' : '👎';
           Alert.alert('Feedback Sent', `You reacted with ${emoji}`);
+          // Restore keyboard after alert
+          setTimeout(() => inputRef.current?.focus(), 300);
         }}
-        onDelete={() => selectedMessage && handleMessageDelete(selectedMessage.id)}
+        onDelete={() => {
+          if (selectedMessage) {
+            handleMessageDelete(selectedMessage.id);
+            // Restore keyboard after delete
+            setTimeout(() => inputRef.current?.focus(), 300);
+          }
+        }}
         isOwnMessage={selectedMessage?.sender === 'user'}
         messageLayout={messageLayout}
       />
