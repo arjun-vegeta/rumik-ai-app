@@ -6,6 +6,7 @@ import {
     Image,
     TouchableOpacity,
     Animated,
+    Dimensions
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,16 +15,26 @@ import * as Haptics from 'expo-haptics';
 import { getDevServerURL } from '../utils/devServer';
 import CallKeepService from '../utils/callKeep';
 
+const { width } = Dimensions.get('window');
+
 export default function CallScreen({ navigation, route }) {
     const mode = route.params?.mode || 'incoming';
     const initialStatus = route.params?.initialStatus;
+    const resumeCall = route.params?.resumeCall || false;
+    const initialDuration = route.params?.callDuration || 0;
 
-    // If initialStatus is provided (e.g. 'connected' from accept button), use it.
-    // Otherwise default based on mode.
     const [callStatus, setCallStatus] = useState(
         initialStatus || (mode === 'outgoing' ? 'calling' : 'incoming')
     );
-    const [callDuration, setCallDuration] = useState(0);
+    const [callDuration, setCallDuration] = useState(initialDuration);
+    const [dotCount, setDotCount] = useState(0);
+    
+    // Visual toggles for the UI buttons (visual only to match design)
+    const [isMuted, setIsMuted] = useState(false);
+    const [isSpeaker, setIsSpeaker] = useState(false);
+
+    // Never show pink border
+    const shouldShowPinkBorder = false;
 
     const pulseAnim = useRef(new Animated.Value(1)).current;
     const controlsAnim = useRef(new Animated.Value(100)).current;
@@ -40,25 +51,18 @@ export default function CallScreen({ navigation, route }) {
         return () => clearTimeout(timeout);
     }, [callStatus]);
 
-    // Pulse animation
+    // Pulse animation disabled
     useEffect(() => {
-        if (callStatus === 'incoming' || callStatus === 'calling') {
-            Animated.loop(
-                Animated.sequence([
-                    Animated.timing(pulseAnim, {
-                        toValue: 1.15,
-                        duration: 1200,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(pulseAnim, {
-                        toValue: 1,
-                        duration: 1200,
-                        useNativeDriver: true,
-                    }),
-                ])
-            ).start();
-        } else {
-            pulseAnim.setValue(1);
+        pulseAnim.setValue(1);
+    }, [pulseAnim]);
+
+    // Animate dots for "Calling..." text
+    useEffect(() => {
+        if (callStatus === 'calling') {
+            const interval = setInterval(() => {
+                setDotCount(prev => (prev + 1) % 4);
+            }, 500);
+            return () => clearInterval(interval);
         }
     }, [callStatus]);
 
@@ -120,97 +124,160 @@ export default function CallScreen({ navigation, route }) {
     const handleDecline = () => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         CallKeepService.endCall();
-        setCallStatus('ended');
-        setTimeout(() => {
-            navigation.goBack();
-        }, 500);
+        // Immediately navigate back to prevent UI flash
+        navigation.goBack();
+    };
+
+    const getStatusText = () => {
+        if (callStatus === 'incoming') return 'Incoming Call...';
+        if (callStatus === 'calling') return `Calling${'.'.repeat(dotCount)}`;
+        if (callStatus === 'connected') return formatTime(callDuration);
+        return 'Call Ended';
     };
 
     return (
         <LinearGradient
-            colors={['#FFFDF6', '#FFF4EC', '#FFBFB4']}
-            locations={[0, 0.27, 1]}
+            // Updated colors to match the warm peach/pink gradient in the image
+            colors={['#FFFDF9', '#FFF0E6', '#FFCDBF']}
+            locations={[0, 0.4, 1]}
             style={styles.gradient}
         >
             <SafeAreaView style={styles.safeArea}>
-                <View style={styles.content}>
+                <View style={styles.container}>
 
-                    {/* Top Info */}
-                    <View style={styles.header}>
-                        <View style={styles.statusPill}>
-                            <Text style={styles.statusText}>
-                                {callStatus === 'incoming' ? 'Incoming Call...' :
-                                    callStatus === 'calling' ? 'Calling...' :
-                                        callStatus === 'connected' ? formatTime(callDuration) : 'Call Ended'}
-                            </Text>
+                    {/* 1. Top Header Name */}
+                    <View style={styles.headerContainer}>
+                        <Text style={styles.headerName}>Ira</Text>
+                    </View>
+
+                    {/* 2. Avatar & Timer Section */}
+                    <View style={styles.avatarSection}>
+                        <View style={[
+                            styles.avatarWrapper,
+                            !shouldShowPinkBorder && styles.avatarWrapperNoBorder
+                        ]}>
+                            <Animated.View
+                                style={[
+                                    styles.avatarPulseContainer,
+                                    !shouldShowPinkBorder && styles.avatarPulseContainerNoBorder,
+                                    shouldShowPinkBorder && {
+                                        transform: [{ scale: pulseAnim }],
+                                    },
+                                ]}
+                            >
+                                <Image
+                                    source={require('../../assets/callimage.avif')}
+                                    style={styles.avatar}
+                                />
+                            </Animated.View>
                         </View>
+                        
+                        {/* Timer / Status Text */}
+                        <Text style={styles.timerText}>
+                            {getStatusText()}
+                        </Text>
                     </View>
 
-                    {/* Main Avatar Area */}
-                    <View style={styles.centerContent}>
-                        <Animated.View
-                            style={[
-                                styles.avatarContainer,
-                                (callStatus === 'incoming' || callStatus === 'calling') && {
-                                    transform: [{ scale: pulseAnim }],
-                                },
-                            ]}
-                        >
-                            <Image
-                                source={require('../../assets/ira-dp.avif')}
-                                style={styles.avatar}
-                            />
-                        </Animated.View>
-                        <Text style={styles.nameText}>Ira</Text>
-                        <Text style={styles.subText}>AI Companion</Text>
-                    </View>
-
-                    {/* Bottom Controls */}
+                    {/* 3. Controls Section */}
                     <Animated.View
                         style={[
-                            styles.controlsContainer,
+                            styles.controlsSection,
                             { transform: [{ translateY: controlsAnim }] }
                         ]}
                     >
-                        {callStatus === 'incoming' ? (
-                            <View style={styles.incomingControls}>
-                                <View style={styles.actionButtonContainer}>
-                                    <TouchableOpacity
-                                        style={[styles.actionButton, styles.declineButton]}
-                                        onPress={handleDecline}
+                        {callStatus === 'connected' ? (
+                            <>
+                                {/* Row of 3 Secondary Actions */}
+                                <View style={styles.secondaryControlsRow}>
+                                    <TouchableOpacity 
+                                        style={[
+                                            styles.iconButton,
+                                            isMuted && styles.iconButtonActive
+                                        ]} 
+                                        onPress={() => {
+                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                            setIsMuted(!isMuted);
+                                        }}
                                     >
-                                        <Ionicons name="close" size={32} color="#E5E0CD" />
+                                        <Ionicons 
+                                            name={isMuted ? "mic-off" : "mic-outline"} 
+                                            size={28} 
+                                            color={isMuted ? "#FFFFFF" : "#1A1A1A"} 
+                                        />
                                     </TouchableOpacity>
-                                    <Text style={styles.actionLabel}>Decline</Text>
+                                    
+                                    <TouchableOpacity 
+                                        style={styles.iconButton}
+                                        onPress={() => {
+                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                            // Navigate back to chat with ongoing call overlay
+                                            navigation.navigate('Chat', {
+                                                showOngoingCall: true,
+                                                callDuration: callDuration
+                                            });
+                                        }}
+                                    >
+                                        <Ionicons name="chatbubble-ellipses-outline" size={28} color="#1A1A1A" />
+                                    </TouchableOpacity>
+                                    
+                                    <TouchableOpacity 
+                                        style={[
+                                            styles.iconButton,
+                                            isSpeaker && styles.iconButtonActive
+                                        ]}
+                                        onPress={() => {
+                                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                            setIsSpeaker(!isSpeaker);
+                                        }}
+                                    >
+                                        <Ionicons 
+                                            name={isSpeaker ? "volume-high" : "volume-high-outline"} 
+                                            size={28} 
+                                            color={isSpeaker ? "#FFFFFF" : "#1A1A1A"} 
+                                        />
+                                    </TouchableOpacity>
                                 </View>
 
-                                <View style={styles.actionButtonContainer}>
-                                    <TouchableOpacity
-                                        style={[styles.actionButton, styles.acceptButton]}
-                                        onPress={handleAccept}
-                                    >
-                                        <Ionicons name="call" size={32} color="#E5E0CD" />
-                                    </TouchableOpacity>
-                                    <Text style={styles.actionLabel}>Accept</Text>
-                                </View>
-                            </View>
-                        ) : (
-                            <View style={styles.connectedControls}>
-                                <View style={styles.secondaryRow}>
-                                    <TouchableOpacity style={styles.secondaryButton}>
-                                        <Ionicons name="mic-off-outline" size={24} color="#000000" />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity style={styles.secondaryButton}>
-                                        <Ionicons name="volume-high-outline" size={24} color="#000000" />
-                                    </TouchableOpacity>
-                                </View>
-
+                                {/* Main Hangup Button */}
                                 <TouchableOpacity
-                                    style={[styles.actionButton, styles.endButton]}
+                                    style={styles.endCallButton}
                                     onPress={handleDecline}
                                 >
-                                    <Ionicons name="call" size={32} color="#E5E0CD" />
+                                    <Ionicons name="call" size={32} color="#FFFFFF" style={styles.endIconRotation} />
                                 </TouchableOpacity>
+                            </>
+                        ) : callStatus === 'calling' ? (
+                            /* Outgoing Call UI - Only Hangup */
+                            <View style={styles.outgoingControlsRow}>
+                                <TouchableOpacity
+                                    style={styles.endCallButton}
+                                    onPress={handleDecline}
+                                >
+                                    <Ionicons name="call" size={32} color="#FFFFFF" style={styles.endIconRotation} />
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            /* Incoming Call UI State */
+                            <View style={styles.incomingControlsRow}>
+                                <View style={styles.incomingAction}>
+                                    <TouchableOpacity
+                                        style={[styles.incomingButton, { backgroundColor: '#FF453A' }]}
+                                        onPress={handleDecline}
+                                    >
+                                        <Ionicons name="close" size={32} color="#FFF" />
+                                    </TouchableOpacity>
+                                    <Text style={styles.incomingLabel}>Decline</Text>
+                                </View>
+
+                                <View style={styles.incomingAction}>
+                                    <TouchableOpacity
+                                        style={[styles.incomingButton, { backgroundColor: '#34C759' }]}
+                                        onPress={handleAccept}
+                                    >
+                                        <Ionicons name="call" size={32} color="#FFF" />
+                                    </TouchableOpacity>
+                                    <Text style={styles.incomingLabel}>Accept</Text>
+                                </View>
                             </View>
                         )}
                     </Animated.View>
@@ -225,87 +292,129 @@ const styles = StyleSheet.create({
     gradient: {
         flex: 1,
     },
-    container: {
-        flex: 1,
-        backgroundColor: '#F2F2F2',
-    },
     safeArea: {
         flex: 1,
     },
-    content: {
+    container: {
         flex: 1,
+        flexDirection: 'column',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: 20,
+        paddingBottom: 40,
     },
-    header: {
+    // 1. Header Styles
+    headerContainer: {
         alignItems: 'center',
         marginTop: 20,
     },
-    statusPill: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        backgroundColor: 'rgba(255,255,255,0.4)',
-        borderRadius: 20,
-        overflow: 'hidden',
+    headerName: {
+        fontSize: 60,
+        fontWeight: '500', // Adjusted to look cleaner like the image
+        color: '#000',
+        marginTop: 10,
+        letterSpacing: 3,
     },
-    statusText: {
-        fontSize: 15,
-        color: '#555',
-        fontWeight: '600',
-        letterSpacing: 0.5,
-    },
-    centerContent: {
+    
+    // 2. Avatar Styles
+    avatarSection: {
         alignItems: 'center',
-        marginTop: -40,
+        justifyContent: 'center',
+        marginTop: -60, // Pulling it up slightly to match layout
     },
-    avatarContainer: {
-        width: 160,
-        height: 160,
-        borderRadius: 80,
-        marginBottom: 24,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.15,
-        shadowRadius: 20,
-        elevation: 10,
-        backgroundColor: '#FFF',
+    avatarWrapper: {
+        marginBottom: 20,
+        borderRadius: 100,
         padding: 4,
+        backgroundColor: 'rgba(255, 100, 100, 0.15)', // Subtle pink glow
+    },
+    avatarWrapperNoBorder: {
+        backgroundColor: 'transparent',
+        padding: 0,
+    },
+    avatarPulseContainer: {
+        width: 230,
+        height: 260,
+        borderRadius: 90,
+        overflow: 'hidden',
+        borderWidth: 4,
+        borderColor: '#FF8C8C', // The visible pink border
+    },
+    avatarPulseContainerNoBorder: {
+        borderWidth: 0,
+        borderColor: 'transparent',
     },
     avatar: {
         width: '100%',
         height: '100%',
-        borderRadius: 80,
     },
-    nameText: {
-        fontSize: 36,
-        fontWeight: '300',
-        color: '#000',
-        marginBottom: 8,
+    timerText: {
+        fontSize: 20,
+        fontWeight: '400',
+        color: '#333',
         letterSpacing: 1,
     },
-    subText: {
-        fontSize: 16,
-        color: '#666',
-        fontWeight: '500',
-        letterSpacing: 0.5,
-    },
-    controlsContainer: {
+
+    // 3. Controls Styles
+    controlsSection: {
         width: '100%',
-        paddingHorizontal: 40,
-        paddingBottom: 40,
+        alignItems: 'center',
+        paddingHorizontal: 30,
+        marginBottom: 20,
     },
-    incomingControls: {
+    
+    // Connected State Styles
+    secondaryControlsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-around',
+        width: '100%',
+        marginBottom: 50, // Space between small buttons and big red button
+        paddingHorizontal: 10,
+    },
+    iconButton: {
+        width: 64,
+        height: 64,
+        borderRadius: 32,
+        backgroundColor: 'rgba(255,255,255,0.6)', // Semi-transparent light bg
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    iconButtonActive: {
+        backgroundColor: '#1A1A1A', // Dark background when active
+    },
+    endCallButton: {
+        width: 80,
+        height: 80,
+        borderRadius: 42,
+        backgroundColor: '#FF453A', // Standard iOS Red
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#FF453A',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 8,
+    },
+    endIconRotation: {
+        transform: [{ rotate: '135deg' }] // Rotates the phone icon to look like "hang up"
+    },
+
+    // Outgoing State Styles
+    outgoingControlsRow: {
+        alignItems: 'center',
+        width: '100%',
+    },
+
+    // Incoming State Styles (Preserved functionality)
+    incomingControlsRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingHorizontal: 20,
+        width: '100%',
+        paddingHorizontal: 30,
     },
-    actionButtonContainer: {
+    incomingAction: {
         alignItems: 'center',
-        gap: 12,
+        gap: 8,
     },
-    actionButton: {
+    incomingButton: {
         width: 72,
         height: 72,
         borderRadius: 36,
@@ -314,43 +423,13 @@ const styles = StyleSheet.create({
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
-        shadowRadius: 8,
+        shadowRadius: 5,
         elevation: 5,
     },
-    declineButton: {
-        backgroundColor: '#FF453A',
-    },
-    acceptButton: {
-        backgroundColor: '#34C759',
-    },
-    endButton: {
-        backgroundColor: '#FF453A',
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        marginTop: 40,
-    },
-    actionLabel: {
+    incomingLabel: {
         fontSize: 14,
         color: '#555',
         fontWeight: '500',
-    },
-    connectedControls: {
-        alignItems: 'center',
-        width: '100%',
-    },
-    secondaryRow: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        width: '100%',
-        paddingHorizontal: 20,
-    },
-    secondaryButton: {
-        width: 60,
-        height: 60,
-        borderRadius: 30,
-        backgroundColor: 'rgba(255,255,255,0.5)',
-        justifyContent: 'center',
-        alignItems: 'center',
+        marginTop: 8,
     },
 });

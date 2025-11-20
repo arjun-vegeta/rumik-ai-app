@@ -1,21 +1,18 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated, Image, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const { width } = Dimensions.get('window');
-
-export default function IncomingCallOverlay({ visible, onAccept, onDecline, onPress, callerName = "Ira" }) {
+export default function OngoingCallOverlay({ visible, onPress, callDuration, callerName = "Ira" }) {
     const insets = useSafeAreaInsets();
     const slideAnim = useRef(new Animated.Value(-150)).current;
     const opacityAnim = useRef(new Animated.Value(0)).current;
-    const [shouldRender, setShouldRender] = React.useState(false);
+    const [shouldRender, setShouldRender] = useState(false);
 
     useEffect(() => {
         if (visible) {
             setShouldRender(true);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
             // Reset and slide in from top
             slideAnim.setValue(-150);
@@ -48,11 +45,16 @@ export default function IncomingCallOverlay({ visible, onAccept, onDecline, onPr
                     useNativeDriver: true,
                 })
             ]).start(() => {
-                // Unmount after animation completes
                 setShouldRender(false);
             });
         }
     }, [visible, slideAnim, opacityAnim]);
+
+    const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    };
 
     if (!shouldRender) return null;
 
@@ -67,10 +69,9 @@ export default function IncomingCallOverlay({ visible, onAccept, onDecline, onPr
                 }
             ]}
         >
-            {/* Dynamic Island Style Container */}
             <TouchableOpacity 
                 style={styles.islandContainer}
-                activeOpacity={0.8}
+                activeOpacity={0.9}
                 onPress={() => {
                     if (onPress) {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -85,33 +86,16 @@ export default function IncomingCallOverlay({ visible, onAccept, onDecline, onPr
                             style={styles.avatar}
                         />
                         <View style={styles.textContainer}>
-                            <Text style={styles.name}>{callerName}</Text>
-                            <Text style={styles.status}>Incoming...</Text>
+                            <View style={styles.nameRow}>
+                                <Ionicons name="call" size={14} color="#FFFFFF" style={styles.callIcon} />
+                                <Text style={styles.name}>{callerName}</Text>
+                            </View>
+                            <Text style={styles.status}>{formatTime(callDuration)}</Text>
                         </View>
                     </View>
 
-                    <View style={styles.actions}>
-                        <TouchableOpacity
-                            style={[styles.button, styles.declineButton]}
-                            onPress={(e) => {
-                                e.stopPropagation();
-                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                onDecline();
-                            }}
-                        >
-                            <Ionicons name="close" size={22} color="#FFFFFF" />
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={[styles.button, styles.acceptButton]}
-                            onPress={(e) => {
-                                e.stopPropagation();
-                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                onAccept();
-                            }}
-                        >
-                            <Ionicons name="call" size={22} color="#FFFFFF" />
-                        </TouchableOpacity>
+                    <View style={styles.rightSection}>
+                        <Text style={styles.tapText}>Tap to return</Text>
                     </View>
                 </View>
             </TouchableOpacity>
@@ -130,16 +114,16 @@ const styles = StyleSheet.create({
     },
     islandContainer: {
         width: '100%',
-        backgroundColor: '#FFFFFF',
+        backgroundColor: '#30D158',
         borderRadius: 30,
         paddingVertical: 8,
         paddingHorizontal: 12,
-        minHeight: 66, // Ensure same height as header (50px avatar + 16px padding)
+        minHeight: 66,
         shadowColor: '#000000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.06,
-        shadowRadius: 3,
-        elevation: 2,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 5,
     },
     content: {
         flexDirection: 'row',
@@ -151,7 +135,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 12,
         flex: 1,
-        marginLeft: 0,
     },
     avatar: {
         width: 50,
@@ -162,33 +145,32 @@ const styles = StyleSheet.create({
     textContainer: {
         justifyContent: 'center',
     },
+    nameRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    callIcon: {
+        marginTop: 1,
+    },
     name: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#000', // Black text
+        color: '#FFFFFF',
         letterSpacing: 0.3,
     },
     status: {
-        fontSize: 12,
-        color: '#666', // Dark gray text
+        fontSize: 13,
+        color: 'rgba(255, 255, 255, 0.9)',
         marginTop: 2,
         fontWeight: '500',
     },
-    actions: {
-        flexDirection: 'row',
-        gap: 8,
+    rightSection: {
+        paddingLeft: 8,
     },
-    button: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    declineButton: {
-        backgroundColor: '#FF453A', // iOS Red
-    },
-    acceptButton: {
-        backgroundColor: '#30D158', // iOS Green
+    tapText: {
+        fontSize: 12,
+        color: 'rgba(255, 255, 255, 0.85)',
+        fontWeight: '500',
     },
 });
