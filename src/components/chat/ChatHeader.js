@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function ChatHeader({ onCallPress, onMenuPress }) {
+export default function ChatHeader({ onCallPress, onMenuPress, onSearchPress }) {
   return (
     <View style={styles.headerWrapper}>
       <View style={styles.header}>
@@ -19,7 +19,10 @@ export default function ChatHeader({ onCallPress, onMenuPress }) {
         </View>
 
         <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.headerIconButton}>
+          <TouchableOpacity 
+            style={styles.headerIconButton}
+            onPress={onSearchPress}
+          >
             <Ionicons name="search-outline" size={24} color="#D17A6F" style={styles.iconThick} />
           </TouchableOpacity>
           <TouchableOpacity

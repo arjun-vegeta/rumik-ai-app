@@ -68,6 +68,12 @@ export default function ChatScreen({ navigation, route }) {
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [showMessageOptions, setShowMessageOptions] = useState(false);
   const [messageLayout, setMessageLayout] = useState(null);
+  
+  // Search state
+  const [isSearchMode, setIsSearchMode] = useState(false);
+  const [searchText, setSearchText] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
 
   // Refs
   const appState = useRef(AppState.currentState);
@@ -355,6 +361,64 @@ export default function ChatScreen({ navigation, route }) {
     return `${formattedHours}:${formattedMinutes} ${ampm}`;
   };
 
+  // Search handlers
+  const handleSearchPress = () => {
+    setIsSearchMode(true);
+    setSearchText('');
+    setSearchResults([]);
+    setCurrentSearchIndex(0);
+  };
+
+  const handleSearchClose = () => {
+    setIsSearchMode(false);
+    setSearchText('');
+    setSearchResults([]);
+    setCurrentSearchIndex(0);
+  };
+
+  const handleSearchChange = (text) => {
+    setSearchText(text);
+    
+    if (text.trim().length === 0) {
+      setSearchResults([]);
+      setCurrentSearchIndex(0);
+      return;
+    }
+
+    // Search through messages
+    const results = messages
+      .map((msg, index) => ({ ...msg, originalIndex: index }))
+      .filter(msg => 
+        msg.text.toLowerCase().includes(text.toLowerCase())
+      );
+    
+    setSearchResults(results);
+    setCurrentSearchIndex(0);
+    
+    // Scroll to first result
+    if (results.length > 0) {
+      scrollToMessage(results[0].id);
+    }
+  };
+
+  const handleSearchNext = () => {
+    if (searchResults.length === 0) return;
+    
+    const nextIndex = (currentSearchIndex + 1) % searchResults.length;
+    setCurrentSearchIndex(nextIndex);
+    scrollToMessage(searchResults[nextIndex].id);
+  };
+
+  const handleSearchPrevious = () => {
+    if (searchResults.length === 0) return;
+    
+    const prevIndex = currentSearchIndex === 0 
+      ? searchResults.length - 1 
+      : currentSearchIndex - 1;
+    setCurrentSearchIndex(prevIndex);
+    scrollToMessage(searchResults[prevIndex].id);
+  };
+
   const renderMessage = ({ item }) => {
     const isIra = item.sender === 'ira';
     const time = formatTime(item.timestamp);
@@ -394,6 +458,7 @@ export default function ChatScreen({ navigation, route }) {
             onLongPress={(layout) => handleMessageLongPress(item, layout)}
             onReplyPress={() => item.replyTo && scrollToMessage(item.replyTo.id)}
             isSelected={isSelected}
+            searchText={isSearchMode ? searchText : ''}
           />
         </Animated.View>
       </SwipeableMessage>
@@ -415,6 +480,7 @@ export default function ChatScreen({ navigation, route }) {
         <ChatHeader
           onCallPress={() => navigation.navigate('CallScreen', { mode: 'outgoing' })}
           onMenuPress={() => setShowMenu(!showMenu)}
+          onSearchPress={handleSearchPress}
         />
 
         <ChatMenu
@@ -519,6 +585,14 @@ export default function ChatScreen({ navigation, route }) {
               actionsOpacityAnim={actionsOpacityAnim}
               sendButtonScaleAnim={sendButtonScaleAnim}
               keyboardVisible={keyboardHeight > 0}
+              isSearchMode={isSearchMode}
+              searchText={searchText}
+              onSearchChange={handleSearchChange}
+              onSearchClose={handleSearchClose}
+              currentSearchIndex={currentSearchIndex}
+              totalSearchResults={searchResults.length}
+              onSearchNext={handleSearchNext}
+              onSearchPrevious={handleSearchPrevious}
             />
           </View>
         </View>

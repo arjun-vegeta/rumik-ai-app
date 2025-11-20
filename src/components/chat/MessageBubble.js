@@ -10,6 +10,7 @@ export default function MessageBubble({
   onLongPress,
   onReplyPress,
   isSelected = false,
+  searchText = '',
 }) {
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
   const shadowAnim = React.useRef(new Animated.Value(1)).current;
@@ -46,6 +47,28 @@ export default function MessageBubble({
       ]).start();
     }
   }, [isSelected]);
+  const highlightText = (text, highlight) => {
+    if (!highlight || !highlight.trim()) {
+      return <Text>{text}</Text>;
+    }
+
+    const parts = text.split(new RegExp(`(${highlight})`, 'gi'));
+    
+    return (
+      <Text>
+        {parts.map((part, index) => 
+          part.toLowerCase() === highlight.toLowerCase() ? (
+            <Text key={index} style={styles.highlightedText}>
+              {part}
+            </Text>
+          ) : (
+            <Text key={index}>{part}</Text>
+          )
+        )}
+      </Text>
+    );
+  };
+
   const renderStatusIcon = () => {
     if (isIra || !message.status) return null;
     
@@ -118,7 +141,7 @@ export default function MessageBubble({
       
       <View style={styles.messageContent}>
         <Text style={[styles.messageText, isIra ? styles.iraText : styles.userText]}>
-          {message.text}
+          {highlightText(message.text, searchText)}
           {/* Invisible timestamp for spacing - WhatsApp trick */}
           <Text style={styles.timestampSpacer}>
             {'    '}{time}{!isIra && '    '}
@@ -245,5 +268,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     color: 'rgba(0, 0, 0, 0.6)',
+  },
+  highlightedText: {
+    backgroundColor: '#FFEB3B',
+    color: '#000000',
   },
 });

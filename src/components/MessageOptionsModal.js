@@ -84,8 +84,11 @@ export default function MessageOptionsModal({
   const isRightSide = messageLayout.x > SCREEN_WIDTH / 2;
   
   // Calculate number of options
-  const optionsCount = isOwnMessage ? 5 : 4;
-  const modalHeight = optionsCount * OPTION_HEIGHT;
+  // All messages: Reply, Report, Delete
+  // Ira messages also get: Feedback section
+  const optionsCount = 3; // Reply, Report, Delete
+  const feedbackSectionHeight = !isOwnMessage ? 90 : 0; // Only for Ira messages
+  const modalHeight = (optionsCount * OPTION_HEIGHT) + feedbackSectionHeight;
   
   // Account for message scale animation (1.05x)
   const SCALE_FACTOR = 1.05;
@@ -163,34 +166,6 @@ export default function MessageOptionsModal({
 
                   <View style={styles.divider} />
 
-                  {/* Thumbs Up */}
-                  <TouchableOpacity
-                    style={styles.optionItem}
-                    onPress={() => handleOption(() => onFeedback('up'))}
-                    activeOpacity={0.6}
-                  >
-                    <View style={styles.optionIcon}>
-                      <Text style={styles.emojiIcon}>👍</Text>
-                    </View>
-                    <Text style={styles.optionText}>Like</Text>
-                  </TouchableOpacity>
-
-                  <View style={styles.divider} />
-
-                  {/* Thumbs Down */}
-                  <TouchableOpacity
-                    style={styles.optionItem}
-                    onPress={() => handleOption(() => onFeedback('down'))}
-                    activeOpacity={0.6}
-                  >
-                    <View style={styles.optionIcon}>
-                      <Text style={styles.emojiIcon}>👎</Text>
-                    </View>
-                    <Text style={styles.optionText}>Dislike</Text>
-                  </TouchableOpacity>
-
-                  <View style={styles.divider} />
-
                   {/* Report */}
                   <TouchableOpacity
                     style={styles.optionItem}
@@ -198,25 +173,51 @@ export default function MessageOptionsModal({
                     activeOpacity={0.6}
                   >
                     <View style={styles.optionIcon}>
-                      <Ionicons name="flag-outline" size={20} color="#666666" />
+                      <Ionicons name="flag-outline" size={20} color="#D17A6F" />
                     </View>
                     <Text style={styles.optionText}>Report</Text>
                   </TouchableOpacity>
 
-                  {/* Delete (only for own messages) */}
-                  {isOwnMessage && (
+                  {/* Delete */}
+                  <View style={styles.divider} />
+                  <TouchableOpacity
+                    style={styles.optionItem}
+                    onPress={() => handleOption(onDelete)}
+                    activeOpacity={0.6}
+                  >
+                    <View style={styles.optionIcon}>
+                      <Ionicons name="trash-outline" size={20} color="#f83535ff" />
+                    </View>
+                    <Text style={[styles.optionText, styles.deleteText]}>Delete</Text>
+                  </TouchableOpacity>
+
+                  {/* Feedback Section - Only for Ira messages */}
+                  {!isOwnMessage && (
                     <>
                       <View style={styles.divider} />
-                      <TouchableOpacity
-                        style={styles.optionItem}
-                        onPress={() => handleOption(onDelete)}
-                        activeOpacity={0.6}
-                      >
-                        <View style={styles.optionIcon}>
-                          <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
+                      <View style={styles.feedbackSection}>
+                        <Text style={styles.feedbackQuestion}>Do you like the response?</Text>
+                        <View style={styles.feedbackButtons}>
+                          <TouchableOpacity
+                            style={styles.feedbackButton}
+                            onPress={() => handleOption(() => onFeedback('up'))}
+                            activeOpacity={0.6}
+                          >
+                            <View style={styles.feedbackIcon}>
+                              <Ionicons name="thumbs-up-outline" size={24} color="#4CAF50" />
+                            </View>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.feedbackButton}
+                            onPress={() => handleOption(() => onFeedback('down'))}
+                            activeOpacity={0.6}
+                          >
+                            <View style={styles.feedbackIcon}>
+                              <Ionicons name="thumbs-down-outline" size={24} color="#FF6B6B" />
+                            </View>
+                          </TouchableOpacity>
                         </View>
-                        <Text style={[styles.optionText, styles.deleteText]}>Delete</Text>
-                      </TouchableOpacity>
+                      </View>
                     </>
                   )}
                 </View>
@@ -250,7 +251,7 @@ const styles = StyleSheet.create({
   menuBlur: {
     borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   optionsList: {
     paddingVertical: 4,
@@ -266,7 +267,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -278,14 +279,44 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   deleteText: {
-    color: '#FF6B6B',
+    color: '#f83535ff',
   },
   divider: {
     height: 0.5,
-    backgroundColor: 'rgba(0, 0, 0, 0.08)',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
     marginHorizontal: 16,
   },
   emojiIcon: {
     fontSize: 18,
+  },
+  feedbackSection: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  },
+  feedbackQuestion: {
+    fontSize: 14,
+    color: '#3c3c3cff',
+    fontWeight: '500',
+    marginBottom: 10,
+    textAlign: 'center',
+    letterSpacing: 0.2,
+  },
+  feedbackButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 28,
+  },
+  feedbackButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  feedbackIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
