@@ -34,6 +34,7 @@ export default function PhoneAuthModal({ navigation, route }) {
   
   // Animations
   const slideAnim = useRef(new Animated.Value(height)).current;
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
   const titleAnim = useRef(new Animated.Value(0)).current;
   const contentAnim = useRef(new Animated.Value(0)).current;
 
@@ -44,12 +45,19 @@ export default function PhoneAuthModal({ navigation, route }) {
       setTimeout(() => phoneInputRef.current?.focus(), 50);
     }
     
-    Animated.spring(slideAnim, {
-      toValue: 0,
-      tension: 80,
-      friction: 10,
-      useNativeDriver: true,
-    }).start();
+    Animated.parallel([
+      Animated.timing(backdropOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        tension: 80,
+        friction: 10,
+        useNativeDriver: true,
+      }),
+    ]).start();
   }, []);
 
   // OTP Timer
@@ -66,11 +74,18 @@ export default function PhoneAuthModal({ navigation, route }) {
 
   const handleClose = () => {
     Keyboard.dismiss();
-    Animated.timing(slideAnim, {
-      toValue: height,
-      duration: 250,
-      useNativeDriver: true,
-    }).start(() => {
+    Animated.parallel([
+      Animated.timing(backdropOpacity, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: height,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
       navigation.goBack();
     });
   };
@@ -201,11 +216,20 @@ export default function PhoneAuthModal({ navigation, route }) {
 
   return (
     <View style={styles.overlay}>
-      <TouchableOpacity 
-        style={styles.backdrop} 
-        activeOpacity={1} 
-        onPress={handleClose}
-      />
+      <Animated.View 
+        style={[
+          styles.backdrop,
+          {
+            opacity: backdropOpacity,
+          },
+        ]}
+      >
+        <TouchableOpacity 
+          style={StyleSheet.absoluteFill} 
+          activeOpacity={1} 
+          onPress={handleClose}
+        />
+      </Animated.View>
       
       <Animated.View 
         style={[
@@ -383,7 +407,11 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContainer: {
