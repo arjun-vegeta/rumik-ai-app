@@ -1,8 +1,8 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
+// Figure out the local dev server URL based on how we're running the app
 export const getDevServerURL = () => {
-    // Try to get the host IP from Expo config (works for Expo Go on physical devices)
     const hostUri = Constants.expoConfig?.hostUri || Constants.manifest?.hostUri;
 
     if (hostUri) {
@@ -10,11 +10,9 @@ export const getDevServerURL = () => {
         return `http://${host}:3001`;
     }
 
-    // Fallback for Android Emulator (if hostUri is missing)
     if (Platform.OS === 'android') {
         return 'http://10.0.2.2:3001';
     }
 
-    // Fallback for iOS Simulator / Web
     return 'http://localhost:3001';
 };

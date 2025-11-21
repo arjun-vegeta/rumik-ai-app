@@ -4,8 +4,7 @@ import { setAudioModeAsync, AndroidAudioEncoder, AndroidOutputFormat, IOSAudioQu
 
 let RNCallKeep;
 
-// Safe import: Only require the library if the native module exists
-// This prevents the "Invariant Violation" crash in Expo Go
+// Only load the native calling library if we're in a real build (not Expo Go)
 if (NativeModules.RNCallKeep) {
     try {
         RNCallKeep = require('react-native-callkeep').default;
@@ -15,7 +14,6 @@ if (NativeModules.RNCallKeep) {
     }
 }
 
-// Mock RNCallKeep if not available (Expo Go)
 if (!RNCallKeep) {
     console.warn('⚠️ Native Calling is disabled (Running in Expo Go). Build the app to use this feature.');
     RNCallKeep = {
@@ -102,14 +100,12 @@ class CallKeepService {
         this.currentCallId = callUUID;
 
         RNCallKeep.displayIncomingCall(
-            callUUID,
-            handle,
-            handle,
-            'generic',
-            false // hasVideo - set to false to match supportsVideo config
-        );
-
-        return callUUID;
+      callUUID,
+      handle,
+      handle,
+      'generic',
+      false
+    );        return callUUID;
     };
 
     endCall = () => {
@@ -119,15 +115,12 @@ class CallKeepService {
         }
     };
 
-    onAnswerCall = ({ callUUID }) => {
-        console.log('Call answered:', callUUID);
-        // Navigate to call screen if handler is set
-        if (this.navigationHandler) {
-            this.navigationHandler('incoming', 'connected');
-        }
-    };
-
-    onEndCall = ({ callUUID }) => {
+  onAnswerCall = ({ callUUID }) => {
+    console.log('Call answered:', callUUID);
+    if (this.navigationHandler) {
+      this.navigationHandler('incoming', 'connected');
+    }
+  };    onEndCall = ({ callUUID }) => {
         console.log('Call ended:', callUUID);
         this.currentCallId = null;
     };

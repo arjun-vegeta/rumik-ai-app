@@ -19,18 +19,18 @@ export default function SwipeableMessage({
   const replyIconOpacity = useRef(new Animated.Value(0)).current;
   const replyIconScale = useRef(new Animated.Value(0.5)).current;
 
+  // Handle the swipe gesture to trigger a reply
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onStartShouldSetPanResponderCapture: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Only respond to right swipes (positive dx)
+        // Only respond to right swipes
         const isHorizontalSwipe = Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
         const isRightSwipe = gestureState.dx > 5;
         return isHorizontalSwipe && isRightSwipe;
       },
       onMoveShouldSetPanResponderCapture: (_, gestureState) => {
-        // Capture the gesture if it's clearly a horizontal swipe
         const isHorizontalSwipe = Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 2;
         const isRightSwipe = gestureState.dx > 10;
         return isHorizontalSwipe && isRightSwipe;
@@ -38,19 +38,17 @@ export default function SwipeableMessage({
       onPanResponderGrant: () => {
         translateX.flattenOffset();
       },
-      onPanResponderTerminationRequest: () => false, // Don't allow termination during swipe
-      onShouldBlockNativeResponder: () => true, // Block native scroll
+      onPanResponderTerminationRequest: () => false,
+      onShouldBlockNativeResponder: () => true,
       onPanResponderMove: (_, gestureState) => {
         const dx = gestureState.dx;
         
-        // Only allow right swipe (positive values)
+        // Only allow swiping to the right, with some resistance when you go too far
         if (dx > 0) {
-          // Apply smooth resistance curve
           let limitedDx;
           if (dx <= SWIPE_THRESHOLD) {
             limitedDx = dx;
           } else {
-            // Exponential resistance after threshold
             const excess = dx - SWIPE_THRESHOLD;
             limitedDx = SWIPE_THRESHOLD + (excess * 0.2);
           }
@@ -58,7 +56,6 @@ export default function SwipeableMessage({
           limitedDx = Math.min(limitedDx, MAX_SWIPE);
           translateX.setValue(limitedDx);
           
-          // Smooth icon animation
           const progress = Math.min(limitedDx / SWIPE_THRESHOLD, 1);
           replyIconOpacity.setValue(progress);
           replyIconScale.setValue(0.5 + progress * 0.5);
@@ -72,12 +69,10 @@ export default function SwipeableMessage({
         const dx = gestureState.dx;
         const velocity = gestureState.vx;
         
-        // Trigger reply if swiped past threshold or with high velocity
+        // If they swiped far enough or fast enough, trigger the reply
         if (dx > SWIPE_THRESHOLD || (dx > 40 && velocity > 0.5)) {
-          // Trigger reply callback
           onReply();
           
-          // Smooth bounce back animation
           Animated.parallel([
             Animated.spring(translateX, {
               toValue: 0,
@@ -98,7 +93,6 @@ export default function SwipeableMessage({
             }),
           ]).start();
         } else {
-          // Reset with spring animation
           Animated.parallel([
             Animated.spring(translateX, {
               toValue: 0,
@@ -120,7 +114,6 @@ export default function SwipeableMessage({
         }
       },
       onPanResponderTerminate: () => {
-        // Reset on gesture cancel
         Animated.parallel([
           Animated.spring(translateX, {
             toValue: 0,

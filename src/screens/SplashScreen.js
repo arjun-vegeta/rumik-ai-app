@@ -10,7 +10,7 @@ export default function SplashScreen({ onFinish }) {
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // Step 1: Rotate and scale up the logo
+    // Spin and grow the logo, then fade it out
     Animated.parallel([
       Animated.timing(rotateAnim, {
         toValue: 0,
@@ -23,7 +23,6 @@ export default function SplashScreen({ onFinish }) {
         useNativeDriver: true,
       }),
     ]).start(() => {
-      // Step 2: Wait 200ms then fade out
       setTimeout(() => {
         Animated.timing(fadeAnim, {
           toValue: 0,

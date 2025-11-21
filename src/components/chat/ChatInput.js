@@ -23,6 +23,7 @@ export default function ChatInput({
   onSearchPrevious,
 }) {
   
+  // Switch to search mode UI when user taps the search icon
   if (isSearchMode) {
     return (
       <View style={[styles.inputContainer, !keyboardVisible && styles.inputContainerWithMargin]}>

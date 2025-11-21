@@ -16,7 +16,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
-// Data for the feature carousel
 const features = [
   {
     title: 'Understands Intent',
@@ -36,6 +35,7 @@ const features = [
 ];
 
 export default function WelcomeScreen({ navigation }) {
+  // Keep track of which feature card is currently showing
   const [currentIndex, setCurrentIndex] = useState(0);
   
   const scrollViewRef = useRef(null);
@@ -50,7 +50,6 @@ export default function WelcomeScreen({ navigation }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
-  // Initial screen load animation
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -67,7 +66,7 @@ export default function WelcomeScreen({ navigation }) {
     ]).start();
   }, [fadeAnim, slideAnim]);
 
-  // Lottie animation control
+  // Play the animation for whichever feature card is currently visible
   useEffect(() => {
     if (lottieRefs[currentIndex]?.current) {
       lottieRefs.forEach((ref, index) => {
@@ -80,7 +79,7 @@ export default function WelcomeScreen({ navigation }) {
     }
   }, [currentIndex, lottieRefs]);
 
-  // Auto-advance carousel every 3 seconds
+  // Automatically cycle through the feature cards every couple seconds
   useEffect(() => {
     const startInterval = () => {
       if (intervalRef.current) {
@@ -144,10 +143,12 @@ export default function WelcomeScreen({ navigation }) {
     }
   );
 
+  // Navigate to phone auth when user wants to login
   const handlePhoneLogin = () => {
     navigation.navigate('PhoneAuthModal');
   };
 
+  // Quick Google login flow (placeholder for actual implementation)
   const handleGoogleLogin = async () => {
     try {
       await AsyncStorage.setItem('phoneNumber', 'google_user');

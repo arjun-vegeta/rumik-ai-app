@@ -14,7 +14,6 @@ export default function OngoingCallOverlay({ visible, onPress, callDuration, cal
         if (visible) {
             setShouldRender(true);
 
-            // Reset and slide in from top
             slideAnim.setValue(-150);
             opacityAnim.setValue(0);
             
@@ -32,7 +31,6 @@ export default function OngoingCallOverlay({ visible, onPress, callDuration, cal
                 })
             ]).start();
         } else if (shouldRender) {
-            // Slide out to top
             Animated.parallel([
                 Animated.timing(slideAnim, {
                     toValue: -150,
@@ -50,6 +48,7 @@ export default function OngoingCallOverlay({ visible, onPress, callDuration, cal
         }
     }, [visible, slideAnim, opacityAnim]);
 
+    // Format call duration into minutes:seconds
     const formatTime = (seconds) => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;

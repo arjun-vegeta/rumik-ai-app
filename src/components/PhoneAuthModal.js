@@ -21,26 +21,22 @@ const { height } = Dimensions.get('window');
 export default function PhoneAuthModal({ navigation, route }) {
   const autoFocus = route?.params?.autoFocus ?? true;
   
-  // State
-  const [step, setStep] = useState('phone'); // 'phone' or 'otp'
+  const [step, setStep] = useState('phone');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(30);
   const [canResend, setCanResend] = useState(false);
 
-  // Refs
   const phoneInputRef = useRef(null);
   const otpInputRefs = useRef([]);
   
-  // Animations
   const slideAnim = useRef(new Animated.Value(height)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
   const titleAnim = useRef(new Animated.Value(0)).current;
   const contentAnim = useRef(new Animated.Value(0)).current;
 
-  // Mount animation - faster for immediate keyboard
+  // Slide up the modal and focus the input right away
   useEffect(() => {
-    // Focus input immediately, even before animation completes
     if (autoFocus) {
       setTimeout(() => phoneInputRef.current?.focus(), 50);
     }
@@ -60,7 +56,6 @@ export default function PhoneAuthModal({ navigation, route }) {
     ]).start();
   }, []);
 
-  // OTP Timer
   useEffect(() => {
     if (step === 'otp' && timer > 0) {
       const interval = setInterval(() => {
@@ -90,13 +85,14 @@ export default function PhoneAuthModal({ navigation, route }) {
     });
   };
 
+  // Move to OTP entry after phone number is entered
   const handleContinue = () => {
     if (phoneNumber.length !== 10) {
       Alert.alert('Invalid Phone Number', 'Please enter a valid 10-digit phone number');
       return;
     }
 
-    // Animate transition to OTP
+    // Animate back to phone entry if they want to change their number
     Animated.parallel([
       Animated.timing(titleAnim, {
         toValue: 1,
@@ -135,6 +131,7 @@ export default function PhoneAuthModal({ navigation, route }) {
     });
   };
 
+  // Verify the OTP and log the user in
   const handleVerify = async () => {
     const otpString = otp.join('');
     if (otpString.length !== 6) {
@@ -161,6 +158,7 @@ export default function PhoneAuthModal({ navigation, route }) {
     Alert.alert('OTP Sent', 'A new OTP has been sent to your phone');
   };
 
+  // Auto-focus next input box as user types OTP
   const handleOtpChange = (value, index) => {
     if (isNaN(value)) return;
 

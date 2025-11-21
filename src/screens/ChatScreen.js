@@ -33,7 +33,6 @@ import FeedbackModal from '../components/FeedbackModal';
 // Hooks
 import useChatLogic from '../hooks/useChatLogic';
 
-// Configure notifications
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -45,7 +44,7 @@ Notifications.setNotificationHandler({
 export default function ChatScreen({ navigation, route }) {
   const isGuest = route.params?.isGuest ?? false;
   
-  // Chat logic hook
+  // All the chat logic lives in this custom hook
   const {
     messages,
     inputText,
@@ -60,7 +59,6 @@ export default function ChatScreen({ navigation, route }) {
     getMessageAnimation,
   } = useChatLogic(isGuest, navigation);
 
-  // UI state
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -72,13 +70,11 @@ export default function ChatScreen({ navigation, route }) {
   const [showMessageOptions, setShowMessageOptions] = useState(false);
   const [messageLayout, setMessageLayout] = useState(null);
   
-  // Search state
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [currentSearchIndex, setCurrentSearchIndex] = useState(0);
 
-  // Refs
   const appState = useRef(AppState.currentState);
   const flatListRef = useRef(null);
   const inputRef = useRef(null);
@@ -92,7 +88,6 @@ export default function ChatScreen({ navigation, route }) {
   const actionsOpacityAnim = useRef(new Animated.Value(1)).current;
   const sendButtonScaleAnim = useRef(new Animated.Value(0)).current;
 
-  // Permissions
   useEffect(() => {
     const getPermissions = async () => {
       const { status } = await Notifications.requestPermissionsAsync();
@@ -103,7 +98,6 @@ export default function ChatScreen({ navigation, route }) {
     getPermissions();
   }, []);
 
-  // App state
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
       appState.current = nextAppState;
@@ -111,7 +105,6 @@ export default function ChatScreen({ navigation, route }) {
     return () => subscription.remove();
   }, []);
 
-  // CallKeep setup
   useEffect(() => {
     CallKeepService.setup();
     CallKeepService.setNavigationHandler((mode, initialStatus) => {
@@ -120,7 +113,6 @@ export default function ChatScreen({ navigation, route }) {
     return () => CallKeepService.setNavigationHandler(null);
   }, [navigation]);
 
-  // Notifications
   useEffect(() => {
     const configureNotifications = async () => {
       await Notifications.setNotificationCategoryAsync('incoming_call', [
@@ -148,7 +140,6 @@ export default function ChatScreen({ navigation, route }) {
     return () => responseListener.remove();
   }, []);
 
-  // Keyboard handling
   useEffect(() => {
     const keyboardWillShow = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
@@ -165,7 +156,6 @@ export default function ChatScreen({ navigation, route }) {
     };
   }, []);
 
-  // Typing animation
   useEffect(() => {
     if (isLoading) {
       const animateDot = (dot, delay) => {
@@ -205,7 +195,6 @@ export default function ChatScreen({ navigation, route }) {
     }
   }, [isLoading]);
 
-  // Input animation
   useEffect(() => {
     const hasText = inputText.trim().length > 0;
     
@@ -236,7 +225,6 @@ export default function ChatScreen({ navigation, route }) {
     ]).start();
   }, [inputText]);
 
-  // Dev call polling
   useEffect(() => {
     if (!__DEV__) return;
 
@@ -264,7 +252,7 @@ export default function ChatScreen({ navigation, route }) {
     return () => clearInterval(pollInterval);
   }, [navigation]);
 
-  // Handlers
+  // Show/hide the scroll-to-bottom button based on scroll position
   const handleScroll = (event) => {
     const { contentOffset, contentSize, layoutMeasurement, velocity } = event.nativeEvent;
     const isAtBottom = contentOffset.y >= contentSize.height - layoutMeasurement.height - 250;
@@ -280,7 +268,6 @@ export default function ChatScreen({ navigation, route }) {
       }).start();
     }
 
-    // Close keyboard on scroll down
     if (velocity && velocity.y < -0.5) {
       Keyboard.dismiss();
     }
@@ -290,6 +277,7 @@ export default function ChatScreen({ navigation, route }) {
     flatListRef.current?.scrollToEnd({ animated: true });
   };
 
+  // Jump to a specific message and flash it to get the user's attention
   const scrollToMessage = (messageId) => {
     const index = messages.findIndex(msg => msg.id === messageId);
     if (index !== -1) {
@@ -310,13 +298,13 @@ export default function ChatScreen({ navigation, route }) {
   };
 
   const handleMessageLongPress = (message, layout) => {
-    // Smoothly dismiss keyboard when opening modal
     Keyboard.dismiss();
     setMessageLayout(layout);
     setSelectedMessage(message);
     setShowMessageOptions(true);
   };
 
+  // Detect double-tap on messages to open the options menu
   const handleMessagePress = (message, layout) => {
     const now = Date.now();
     const DOUBLE_PRESS_DELAY = 300;
@@ -366,7 +354,6 @@ export default function ChatScreen({ navigation, route }) {
     return `${formattedHours}:${formattedMinutes} ${ampm}`;
   };
 
-  // Search handlers
   const handleSearchPress = () => {
     setIsSearchMode(true);
     setSearchText('');
@@ -381,6 +368,7 @@ export default function ChatScreen({ navigation, route }) {
     setCurrentSearchIndex(0);
   };
 
+  // Filter messages as the user types in the search box
   const handleSearchChange = (text) => {
     setSearchText(text);
     
@@ -390,7 +378,6 @@ export default function ChatScreen({ navigation, route }) {
       return;
     }
 
-    // Search through messages
     const results = messages
       .map((msg, index) => ({ ...msg, originalIndex: index }))
       .filter(msg => 
@@ -400,7 +387,6 @@ export default function ChatScreen({ navigation, route }) {
     setSearchResults(results);
     setCurrentSearchIndex(0);
     
-    // Scroll to first result
     if (results.length > 0) {
       scrollToMessage(results[0].id);
     }
@@ -470,7 +456,6 @@ export default function ChatScreen({ navigation, route }) {
     );
   };
 
-  // Handle ongoing call timer
   useEffect(() => {
     let timer;
     if (ongoingCall) {
@@ -481,14 +466,12 @@ export default function ChatScreen({ navigation, route }) {
     return () => clearInterval(timer);
   }, [ongoingCall]);
 
-  // Listen for navigation params to show ongoing call
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       const params = route.params;
       if (params?.showOngoingCall) {
         setOngoingCall(true);
         setCallDuration(params.callDuration || 0);
-        // Clear the param
         navigation.setParams({ showOngoingCall: undefined, callDuration: undefined });
       }
     });
@@ -658,7 +641,6 @@ export default function ChatScreen({ navigation, route }) {
           setShowMessageOptions(false);
           setSelectedMessage(null);
           setMessageLayout(null);
-          // Smoothly restore keyboard after modal closes
           setTimeout(() => {
             inputRef.current?.focus();
           }, 0);
@@ -671,19 +653,16 @@ export default function ChatScreen({ navigation, route }) {
         }}
         onReport={() => {
           Alert.alert('Report Message', 'This message has been reported.');
-          // Restore keyboard after alert
           setTimeout(() => inputRef.current?.focus(), 300);
         }}
         onFeedback={(type) => {
           const emoji = type === 'up' ? '👍' : '👎';
           Alert.alert('Feedback Sent', `You reacted with ${emoji}`);
-          // Restore keyboard after alert
           setTimeout(() => inputRef.current?.focus(), 300);
         }}
         onDelete={() => {
           if (selectedMessage) {
             handleMessageDelete(selectedMessage.id);
-            // Restore keyboard after delete
             setTimeout(() => inputRef.current?.focus(), 300);
           }
         }}

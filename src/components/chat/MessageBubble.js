@@ -47,6 +47,8 @@ export default function MessageBubble({
       ]).start();
     }
   }, [isSelected]);
+  
+  // Highlight the search term in the message text
   const highlightText = (text, highlight) => {
     if (!highlight || !highlight.trim()) {
       return <Text>{text}</Text>;
@@ -69,6 +71,7 @@ export default function MessageBubble({
     );
   };
 
+  // Show read receipts for user messages
   const renderStatusIcon = () => {
     if (isIra || !message.status) return null;
     
@@ -85,6 +88,7 @@ export default function MessageBubble({
     );
   };
 
+  // Get the message position so we can show the options menu in the right place
   const handlePress = () => {
     if (bubbleRef.current) {
       bubbleRef.current.measure((x, y, width, height, pageX, pageY) => {
@@ -142,12 +146,12 @@ export default function MessageBubble({
       <View style={styles.messageContent}>
         <Text style={[styles.messageText, isIra ? styles.iraText : styles.userText]}>
           {highlightText(message.text, searchText)}
-          {/* Invisible timestamp for spacing - WhatsApp trick */}
+          {/* Invisible spacing to make room for the timestamp */}
           <Text style={styles.timestampSpacer}>
             {'    '}{time}{!isIra && '    '}
           </Text>
         </Text>
-        {/* Actual visible timestamp positioned absolutely */}
+        {/* Actual timestamp positioned on top of the spacing */}
         <View style={styles.timestampContainer}>
           <Text style={[styles.timestamp, isIra ? styles.iraTimestamp : styles.userTimestamp]}>
             {time}

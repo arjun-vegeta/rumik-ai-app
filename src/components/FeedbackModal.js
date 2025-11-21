@@ -26,6 +26,7 @@ export default function FeedbackModal({ visible, onClose, isGuest }) {
   const [email, setEmail] = useState('');
   const [sendDiagnostics, setSendDiagnostics] = useState(true);
 
+  // Make sure they've filled in all the important stuff before sending
   const handleSubmit = () => {
     if (!selectedType) {
       Alert.alert('Required', 'Please select a feedback type');
@@ -40,7 +41,7 @@ export default function FeedbackModal({ visible, onClose, isGuest }) {
       return;
     }
 
-    // Here you would send the feedback to your backend
+    // Send the feedback to the backend - would normally POST to an API endpoint
     console.log('Feedback submitted:', {
       type: selectedType,
       description,

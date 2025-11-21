@@ -10,12 +10,14 @@ export default function useChatLogic(isGuest, navigation) {
   const [messageCount, setMessageCount] = useState(0);
   const [replyingTo, setReplyingTo] = useState(null);
 
+  // Keep track of animations for each message so they can fade in smoothly
   const messageAnimations = useRef({}).current;
 
   useEffect(() => {
     loadChatHistory();
   }, []);
 
+  // Load the conversation from where we left off, or start fresh with a greeting
   const loadChatHistory = async () => {
     try {
       const savedMessages = await AsyncStorage.getItem('chatHistory');
@@ -50,9 +52,11 @@ export default function useChatLogic(isGuest, navigation) {
     }
   };
 
+  // Handle sending a message - check guest limits and get Ira's response
   const sendMessage = async () => {
     if (!inputText.trim()) return;
 
+    // Guest users hit a wall after 3 messages to encourage signing up
     const newCount = messageCount + 1;
     if (isGuest && newCount > 3) {
       navigation.navigate('MessageLimitModal');
@@ -80,10 +84,12 @@ export default function useChatLogic(isGuest, navigation) {
     setMessageCount(newCount);
 
     try {
+      // Send the message to Ira's brain and wait for her response
       const response = await axios.post('https://rumik-ai.vercel.app/api/chat-ira', {
         message: userMessage.text,
       });
 
+      // Mark the user's message as read once Ira responds
       const messagesWithRead = updatedMessages.map(msg => 
         msg.id === userMessage.id ? { ...msg, status: 'read' } : msg
       );
@@ -165,6 +171,7 @@ export default function useChatLogic(isGuest, navigation) {
     );
   };
 
+  // Create a fade-in animation for each message as it appears
   const getMessageAnimation = (messageId) => {
     if (!messageAnimations[messageId]) {
       messageAnimations[messageId] = new Animated.Value(0);

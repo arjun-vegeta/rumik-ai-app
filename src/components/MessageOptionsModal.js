@@ -81,42 +81,31 @@ export default function MessageOptionsModal({
 
   if (!messageLayout) return null;
 
+  // Figure out if the modal should appear above or below the message bubble
   const isRightSide = messageLayout.x > SCREEN_WIDTH / 2;
   
-  // Calculate number of options
-  // All messages: Reply, Report, Delete
-  // Ira messages also get: Feedback section
-  const optionsCount = 3; // Reply, Report, Delete
-  const feedbackSectionHeight = !isOwnMessage ? 90 : 0; // Only for Ira messages
+  const optionsCount = 3;
+  const feedbackSectionHeight = !isOwnMessage ? 90 : 0;
   const modalHeight = (optionsCount * OPTION_HEIGHT) + feedbackSectionHeight;
   
-  // Account for message scale animation (1.05x)
   const SCALE_FACTOR = 1.05;
   const scaleExpansion = (messageLayout.height * (SCALE_FACTOR - 1)) / 2;
   
-  // Calculate if modal should be above or below message
   const spaceBelow = SCREEN_HEIGHT - (messageLayout.y + messageLayout.height);
   const spaceAbove = messageLayout.y;
   const shouldShowAbove = spaceBelow < modalHeight + MODAL_GAP + SCREEN_MARGIN + scaleExpansion;
   
-  // Calculate modal vertical position with consistent 8px gap
-  // When above: account for the scale expansion at the top of the message
-  // When below: account for the scale expansion at the bottom of the message
   const modalTop = shouldShowAbove 
     ? messageLayout.y - modalHeight - MODAL_GAP - scaleExpansion
     : messageLayout.y + messageLayout.height + MODAL_GAP + scaleExpansion;
   
-  // Calculate modal horizontal position
-  // Align modal to the same side as the message
   let modalLeft;
   if (isRightSide) {
-    // User message (right side) - align modal to right edge of message
     modalLeft = Math.max(
       SCREEN_MARGIN, 
       messageLayout.x + messageLayout.width - MODAL_WIDTH
     );
   } else {
-    // Ira message (left side) - align modal to left edge of message
     modalLeft = Math.min(
       SCREEN_WIDTH - MODAL_WIDTH - SCREEN_MARGIN,
       messageLayout.x

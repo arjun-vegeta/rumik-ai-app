@@ -22,6 +22,7 @@ export default function App() {
     checkLoginStatus();
   }, []);
 
+  // Figure out if the user is already logged in so we know where to start
   const checkLoginStatus = async () => {
     try {
       const phoneNumber = await AsyncStorage.getItem('phoneNumber');

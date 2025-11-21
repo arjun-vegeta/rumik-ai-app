@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
 export default function MessageLimitModal({ navigation }) {
+  // Navigate to phone auth when user decides to sign up
   const handleLogin = () => {
     navigation.navigate('PhoneAuthModal');
   };

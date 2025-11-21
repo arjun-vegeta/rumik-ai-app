@@ -23,23 +23,23 @@ export default function CallScreen({ navigation, route }) {
     const resumeCall = route.params?.resumeCall || false;
     const initialDuration = route.params?.callDuration || 0;
 
+    // Track what's happening with the call - ringing, connected, etc.
     const [callStatus, setCallStatus] = useState(
         initialStatus || (mode === 'outgoing' ? 'calling' : 'incoming')
     );
     const [callDuration, setCallDuration] = useState(initialDuration);
     const [dotCount, setDotCount] = useState(0);
     
-    // Visual toggles for the UI buttons (visual only to match design)
+    // UI button states (visual only, not actually controlling audio)
     const [isMuted, setIsMuted] = useState(false);
     const [isSpeaker, setIsSpeaker] = useState(false);
 
-    // Never show pink border
     const shouldShowPinkBorder = false;
 
     const pulseAnim = useRef(new Animated.Value(1)).current;
     const controlsAnim = useRef(new Animated.Value(100)).current;
 
-    // Auto-connect for outgoing calls
+    // Auto-connect outgoing calls after a few seconds
     useEffect(() => {
         let timeout;
         if (callStatus === 'calling') {
@@ -51,12 +51,11 @@ export default function CallScreen({ navigation, route }) {
         return () => clearTimeout(timeout);
     }, [callStatus]);
 
-    // Pulse animation disabled
     useEffect(() => {
         pulseAnim.setValue(1);
     }, [pulseAnim]);
 
-    // Animate dots for "Calling..." text
+    // Animate the dots in "Calling..." text
     useEffect(() => {
         if (callStatus === 'calling') {
             const interval = setInterval(() => {
@@ -66,7 +65,6 @@ export default function CallScreen({ navigation, route }) {
         }
     }, [callStatus]);
 
-    // Slide up controls
     useEffect(() => {
         Animated.spring(controlsAnim, {
             toValue: 0,
@@ -76,7 +74,6 @@ export default function CallScreen({ navigation, route }) {
         }).start();
     }, []);
 
-    // Call timer
     useEffect(() => {
         let timer;
         if (callStatus === 'connected') {
@@ -87,7 +84,7 @@ export default function CallScreen({ navigation, route }) {
         return () => clearInterval(timer);
     }, [callStatus]);
 
-    // Poll for hangup command
+    // In development, listen for CLI commands to hang up the call
     useEffect(() => {
         if (!__DEV__) return;
 
@@ -103,7 +100,6 @@ export default function CallScreen({ navigation, route }) {
                     handleDecline();
                 }
             } catch (error) {
-                // Silent fail
             }
         }, 2000);
 
@@ -121,10 +117,10 @@ export default function CallScreen({ navigation, route }) {
         setCallStatus('connected');
     };
 
+    // End the call and go back to chat
     const handleDecline = () => {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         CallKeepService.endCall();
-        // Immediately navigate back to prevent UI flash
         navigation.goBack();
     };
 
@@ -137,7 +133,6 @@ export default function CallScreen({ navigation, route }) {
 
     return (
         <LinearGradient
-            // Updated colors to match the warm peach/pink gradient in the image
             colors={['#FFFDF9', '#FFF0E6', '#FFCDBF']}
             locations={[0, 0.4, 1]}
             style={styles.gradient}
@@ -145,12 +140,10 @@ export default function CallScreen({ navigation, route }) {
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.container}>
 
-                    {/* 1. Top Header Name */}
                     <View style={styles.headerContainer}>
                         <Text style={styles.headerName}>Ira</Text>
                     </View>
 
-                    {/* 2. Avatar & Timer Section */}
                     <View style={styles.avatarSection}>
                         <View style={[
                             styles.avatarWrapper,
@@ -172,13 +165,11 @@ export default function CallScreen({ navigation, route }) {
                             </Animated.View>
                         </View>
                         
-                        {/* Timer / Status Text */}
                         <Text style={styles.timerText}>
                             {getStatusText()}
                         </Text>
                     </View>
 
-                    {/* 3. Controls Section */}
                     <Animated.View
                         style={[
                             styles.controlsSection,
@@ -187,7 +178,6 @@ export default function CallScreen({ navigation, route }) {
                     >
                         {callStatus === 'connected' ? (
                             <>
-                                {/* Row of 3 Secondary Actions */}
                                 <View style={styles.secondaryControlsRow}>
                                     <TouchableOpacity 
                                         style={[
@@ -210,7 +200,7 @@ export default function CallScreen({ navigation, route }) {
                                         style={styles.iconButton}
                                         onPress={() => {
                                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                            // Navigate back to chat with ongoing call overlay
+                                            // Go back to chat while keeping the call going
                                             navigation.navigate('Chat', {
                                                 showOngoingCall: true,
                                                 callDuration: callDuration
@@ -238,7 +228,6 @@ export default function CallScreen({ navigation, route }) {
                                     </TouchableOpacity>
                                 </View>
 
-                                {/* Main Hangup Button */}
                                 <TouchableOpacity
                                     style={styles.endCallButton}
                                     onPress={handleDecline}
@@ -247,7 +236,6 @@ export default function CallScreen({ navigation, route }) {
                                 </TouchableOpacity>
                             </>
                         ) : callStatus === 'calling' ? (
-                            /* Outgoing Call UI - Only Hangup */
                             <View style={styles.outgoingControlsRow}>
                                 <TouchableOpacity
                                     style={styles.endCallButton}
@@ -257,7 +245,6 @@ export default function CallScreen({ navigation, route }) {
                                 </TouchableOpacity>
                             </View>
                         ) : (
-                            /* Incoming Call UI State */
                             <View style={styles.incomingControlsRow}>
                                 <View style={styles.incomingAction}>
                                     <TouchableOpacity
@@ -301,30 +288,28 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingBottom: 40,
     },
-    // 1. Header Styles
     headerContainer: {
         alignItems: 'center',
         marginTop: 20,
     },
     headerName: {
         fontSize: 60,
-        fontWeight: '500', // Adjusted to look cleaner like the image
+        fontWeight: '500',
         color: '#000',
         marginTop: 10,
         letterSpacing: 3,
     },
     
-    // 2. Avatar Styles
     avatarSection: {
         alignItems: 'center',
         justifyContent: 'center',
-        marginTop: -60, // Pulling it up slightly to match layout
+        marginTop: -60,
     },
     avatarWrapper: {
         marginBottom: 20,
         borderRadius: 100,
         padding: 4,
-        backgroundColor: 'rgba(255, 100, 100, 0.15)', // Subtle pink glow
+        backgroundColor: 'rgba(255, 100, 100, 0.15)',
     },
     avatarWrapperNoBorder: {
         backgroundColor: 'transparent',
@@ -336,7 +321,7 @@ const styles = StyleSheet.create({
         borderRadius: 90,
         overflow: 'hidden',
         borderWidth: 4,
-        borderColor: '#FF8C8C', // The visible pink border
+        borderColor: '#FF8C8C',
     },
     avatarPulseContainerNoBorder: {
         borderWidth: 0,
@@ -353,7 +338,6 @@ const styles = StyleSheet.create({
         letterSpacing: 1,
     },
 
-    // 3. Controls Styles
     controlsSection: {
         width: '100%',
         alignItems: 'center',
@@ -361,30 +345,29 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     
-    // Connected State Styles
     secondaryControlsRow: {
         flexDirection: 'row',
         justifyContent: 'space-around',
         width: '100%',
-        marginBottom: 50, // Space between small buttons and big red button
+        marginBottom: 50,
         paddingHorizontal: 10,
     },
     iconButton: {
         width: 64,
         height: 64,
         borderRadius: 32,
-        backgroundColor: 'rgba(255,255,255,0.6)', // Semi-transparent light bg
+        backgroundColor: 'rgba(255,255,255,0.6)',
         justifyContent: 'center',
         alignItems: 'center',
     },
     iconButtonActive: {
-        backgroundColor: '#1A1A1A', // Dark background when active
+        backgroundColor: '#1A1A1A',
     },
     endCallButton: {
         width: 80,
         height: 80,
         borderRadius: 42,
-        backgroundColor: '#FF453A', // Standard iOS Red
+        backgroundColor: '#FF453A',
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: '#FF453A',
@@ -394,7 +377,7 @@ const styles = StyleSheet.create({
         elevation: 8,
     },
     endIconRotation: {
-        transform: [{ rotate: '135deg' }] // Rotates the phone icon to look like "hang up"
+        transform: [{ rotate: '135deg' }]
     },
 
     // Outgoing State Styles
@@ -403,7 +386,6 @@ const styles = StyleSheet.create({
         width: '100%',
     },
 
-    // Incoming State Styles (Preserved functionality)
     incomingControlsRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',

@@ -12,12 +12,12 @@ export default function IncomingCallOverlay({ visible, onAccept, onDecline, onPr
     const opacityAnim = useRef(new Animated.Value(0)).current;
     const [shouldRender, setShouldRender] = React.useState(false);
 
+    // Slide the call notification down from the top when it appears
     useEffect(() => {
         if (visible) {
             setShouldRender(true);
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-            // Reset and slide in from top
             slideAnim.setValue(-150);
             opacityAnim.setValue(0);
             
@@ -35,7 +35,6 @@ export default function IncomingCallOverlay({ visible, onAccept, onDecline, onPr
                 })
             ]).start();
         } else if (shouldRender) {
-            // Slide out to top
             Animated.parallel([
                 Animated.timing(slideAnim, {
                     toValue: -150,
@@ -48,7 +47,6 @@ export default function IncomingCallOverlay({ visible, onAccept, onDecline, onPr
                     useNativeDriver: true,
                 })
             ]).start(() => {
-                // Unmount after animation completes
                 setShouldRender(false);
             });
         }
@@ -134,7 +132,7 @@ const styles = StyleSheet.create({
         borderRadius: 30,
         paddingVertical: 8,
         paddingHorizontal: 12,
-        minHeight: 66, // Ensure same height as header (50px avatar + 16px padding)
+        minHeight: 66,
         shadowColor: '#000000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.06,
@@ -165,12 +163,12 @@ const styles = StyleSheet.create({
     name: {
         fontSize: 16,
         fontWeight: '700',
-        color: '#000', // Black text
+        color: '#000',
         letterSpacing: 0.3,
     },
     status: {
         fontSize: 12,
-        color: '#666', // Dark gray text
+        color: '#666',
         marginTop: 2,
         fontWeight: '500',
     },
@@ -186,9 +184,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     declineButton: {
-        backgroundColor: '#FF453A', // iOS Red
+        backgroundColor: '#FF453A',
     },
     acceptButton: {
-        backgroundColor: '#30D158', // iOS Green
+        backgroundColor: '#30D158',
     },
 });
